@@ -1,0 +1,55 @@
+WKT,EPAbeachID,SPLocation,Description,County,Boundary
+"POINT ( -78.608124 33.838112)","","WAC-001","59th Ave N","Horry",NMB1
+"POINT ( -78.623384 33.833667)","","WAC-002","45th Ave N","Horry",NMB1
+"POINT ( -78.637238 33.82885)","","WAC-003","30th Ave N","Horry",NMB1
+"POINT ( -78.653389 33.824127)","","WAC-004","16th Ave N","Horry",NMB2
+"POINT ( -78.668182 33.81889)","","WAC-005","3rd Ave N","Horry",NMB2
+"POINT ( -78.681816 33.813919)","","WAC-005A","7th Ave S","Horry",NMB2
+"POINT ( -78.684113 33.813141)","","WAC-006","9th Ave S","Horry",NMB2
+"POINT ( -78.700081 33.806564)","","WAC-007","17th Ave S","Horry",NMB2
+"POINT ( -78.717644 33.798526)","","WAC-008","33rd Ave S","Horry",NMB2
+"POINT ( -78.731698 33.791639)","","WAC-009","47th Ave. S","Horry",NMB3
+"POINT ( -78.73913 33.787536)","","WAC-009A","White Point Swash","Horry",NMB3
+"POINT ( -78.741882 33.786366)","","WAC-010","Briarcliff Cabana","Horry",NMB3
+"POINT ( -78.745659 33.784439)","","WAC-011","2m N of Wyndham Hotel","Horry",NMB3
+"POINT ( -78.764427 33.773857)","","WAC-012","Lands End Resort Arcadia","Horry",MB1
+"POINT ( -78.77519 33.767888)","","WAC-013","Wyhdam Hotel Arcadia","Horry",MB1
+"POINT ( -78.788451 33.759365)","","WAC-014","Sands Ocean Club Arcadia","Horry",MB1
+"POINT ( -78.794008 33.755785)","","WAC-015","Singleton Swash Arcadia","Horry",MB1
+"POINT ( -78.803427 33.7498)","","WAC-015A","Bear Branch Swash","Horry",MB1
+"POINT ( -78.812889 33.743202)","","WAC-016","77th Ave North, MB","Horry",MB1
+"POINT ( -78.82225 33.736961)","","WAC-016A","Cane Patch Swatch","Horry",MB2
+"POINT ( -78.82592 33.734222)","","WAC-017","64th Ave North, MB","Horry",MB2
+"POINT ( -78.838081 33.724979)","","WAC-017A","Deep Head Swash, MB","Horry",MB2
+"POINT ( -78.84269 33.721703)","","WAC-018","50th Ave North, MB","Horry",MB2
+"POINT ( -78.857109 33.710392)","","WAC-019","34th Ave North, MB","Horry",MB2
+"POINT ( -78.866264 33.702896)","","WAC-020","24th Ave North, MB","Horry",MB3
+"POINT ( -78.880002 33.690417)","","WAC-021","8th Ave North, MB","Horry",MB3
+"POINT ( -78.890739 33.680092)","","WAC-022A","WIthers Swash","Horry",MB3
+"POINT ( -78.907852 33.666485)","","WAC-024","23rd Ave South, MB","Horry",MB4
+"POINT ( -78.917053 33.658138)","","WAC-025A","Midway Swash","Horry",MB4
+"POINT ( -78.921021 33.654804)","","WAC-026","Nash Drive","Horry",MB4
+"POINT ( -78.932224 33.645399)","","WAC-027","Myrtle Beach State Park","Horry",MB4
+"POINT ( -78.944862 33.632813)","","WAC-028","Pirateland Swash","Horry",Surfside
+"POINT ( -78.952248 33.625679)","","WAC-029","Ocean Lakes Campground","Horry",Surfside
+"POINT ( -78.958427 33.619007)","","WAC-029A","Ocean Lakes Discharge","Horry",Surfside
+"POINT ( -78.961151 33.616112)","","WAC-030","16th Ave N, Surfside","Horry",Surfside
+"POINT ( -78.964134 33.613144)","","WAC-031","11th Ave N, Surfside","Horry",Surfside
+"POINT ( -78.967896 33.608765)","","WAC-031A","5th Ave N Swash, Surfside","Horry",Surfside
+"POINT ( -78.969139 33.60775)","","WAC-032","3rd Ave N, Surfside","Horry",Surfside
+"POINT ( -78.974052 33.602741)","","WAC-033","3rd Ave S, Surfside","Horry",Gardcty
+"POINT ( -78.977165 33.599388)","","WAC-034","8th Ave S, Surfside","Horry",Gardcty
+"POINT ( -78.981026 33.595291)","","WAC-035","13th Ave S, Surfside","Horry",Gardcty
+"POINT ( -78.987549 33.588184)","","WAC-036","Hawes Ave, Garden City","Horry",Gardcty
+"POINT ( -78.998749 33.57597)","","WAC-037","Azalea Ace, Garden City","Horry",Gardcty
+"POINT ( -79.028046 33.534336)","","WAC-038","Garden City Point","Horry",
+"POINT ( -79.048546 33.514484)","","WAC-039","North Access HB State Park","Horry",
+"POINT ( -79.065063 33.501568)","","WAC-040","Visitors Center HB State Park","Horry",
+"POINT ( -79.082657 33.48526)","","WAC-041","Songbird Lane, Litchfield Beach","Horry",
+"POINT ( -79.09568 33.469109)","","WAC-042","Litchfield Inn","Horry",
+"POINT ( -79.100632 33.461849)","","WAC-043A","1st L Past Gate","Horry",
+"POINT ( -79.116087 33.437032)","","WAC-044A","Public Access 2nd - Atlantic","Horry",
+"POINT ( -79.130806 33.412083)","","WAC-045A","Public Access Springs/ha PI","Horry",
+"POINT ( -79.138123 33.399624)","","WAC-046","Pawleys Is. South Parking","Horry",
+"POINT ( -79.148521 33.375084)","","WAC-047","Luvan Way, Debordieu","Horry",
+"POINT ( -79.151688 33.359783)","","WAC-048","Lafayette / Ocean Green Blvd, Debordieu","Horry",
