@@ -96,7 +96,7 @@
                               </td>
                               <td>
                                 % if test_obj.mlrResult is not None:
-                                  ${"%.2f" % (test_obj.mlrResult)}
+                                  ${"%d" % (test_obj.mlrResult)}
                                 % else:
                                   NO TEST
                                 % endif
