@@ -64,7 +64,7 @@
                             </tr>
                             <tr>
                                 <td>
-                                    ${"%.2f" % (site_data['entero_value'])}
+                                    ${"%d" % (site_data['entero_value'])}
                                 </td>
                             </tr>
                         </table>
