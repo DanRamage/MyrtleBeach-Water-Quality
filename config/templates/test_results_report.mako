@@ -34,8 +34,11 @@
             </div>
             % for site_data in ensemble_tests:
                 <div class="row">
-                    <div class="col-xs-6">
+                    <div class="col-xs-3">
                       <h2>Site: ${site_data['metadata'].name}</h2>
+                    </div>
+                    <div class="col-xs-6">
+                      <h2>${site_data['metadata'].description}</h2>
                     </div>
                 </div>
                 <div class="row">

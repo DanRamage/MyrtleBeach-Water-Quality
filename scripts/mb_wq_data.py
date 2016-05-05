@@ -143,14 +143,6 @@ class mb_wq_historical_data(wq_data):
       self.logger.debug("Closing connection to xenia db")
     self.xenia_db.DB.close()
 
-    if self.logger:
-      self.logger.debug("Closing connection to thredds endpoint.")
-    self.ncObj.close()
-
-    if self.logger:
-      self.logger.debug("Closing connection to hycom endpoint.")
-    self.hycom_model.close()
-
   def reset(self, **kwargs):
     self.site = kwargs['site']
     #The main station we retrieve the values from.
@@ -205,16 +197,13 @@ class mb_wq_historical_data(wq_data):
     var_name = 'tide_stage_%s' % (self.tide_station)
     wq_tests_data[var_name] = wq_defines.NO_DATA
 
-    #Build variables for the subordinate tide station.
-    var_name = 'tide_range_%s' % (self.tide_offset_settings['tide_station'])
-    wq_tests_data[var_name] = wq_defines.NO_DATA
-    var_name = 'tide_hi_%s' % (self.tide_offset_settings['tide_station'])
-    wq_tests_data[var_name] = wq_defines.NO_DATA
-    var_name = 'tide_lo_%s' % (self.tide_offset_settings['tide_station'])
-    wq_tests_data[var_name] = wq_defines.NO_DATA
+    wq_tests_data['sun2_wind_speed'] = wq_defines.NO_DATA
+    wq_tests_data['sun2_wind_dir_val'] = wq_defines.NO_DATA
 
-    wq_tests_data['sun2_avg_wspd'] = wq_defines.NO_DATA
-    wq_tests_data['sun2_avg_wdir'] = wq_defines.NO_DATA
+    wq_tests_data['nos8661070_wind_spd'] = wq_defines.NO_DATA
+    wq_tests_data['nos8661070_wind_dir_val'] = wq_defines.NO_DATA
+    wq_tests_data['nos8661070_water_temp'] = wq_defines.NO_DATA
+    wq_tests_data['nos8661070_water_level'] = wq_defines.NO_DATA
 
     for boundary in self.site.contained_by:
       if len(boundary.name):
@@ -226,7 +215,7 @@ class mb_wq_historical_data(wq_data):
         var_name = '%s_nexrad_dry_days_count' % (clean_var_boundary_name)
         wq_tests_data[var_name] = wq_defines.NO_DATA
 
-        var_name = '%s_nexrad_rainfall_intesity' % (clean_var_boundary_name)
+        var_name = '%s_nexrad_rainfall_intensity' % (clean_var_boundary_name)
         wq_tests_data[var_name] = wq_defines.NO_DATA
 
         var_name = '%s_nexrad_total_1_day_delay' % (clean_var_boundary_name)
@@ -342,7 +331,8 @@ class mb_wq_historical_data(wq_data):
                                                                     'precipitation_radar_weighted_average',
                                                                     'mm')
         if radar_val != None:
-          wq_tests_data[var_name] = radar_val
+          #Convert mm to inches
+          wq_tests_data[var_name] = radar_val * 0.0393701
         else:
           if self.logger:
             self.logger.error("No data available for boundary: %s Date: %s. Error: %s" %(var_name, start_date, self.xenia_db.getErrorInfo()))
@@ -374,7 +364,7 @@ class mb_wq_historical_data(wq_data):
                                                               'precipitation_radar_weighted_average',
                                                               'mm')
       if rainfall_intensity is not None:
-        var_name = '%s_nexrad_rainfall_intesity' % (clean_var_bndry_name)
+        var_name = '%s_nexrad_rainfall_intensity' % (clean_var_bndry_name)
         wq_tests_data[var_name] = rainfall_intensity
 
 
@@ -435,8 +425,11 @@ class mb_wq_model_data(mb_wq_historical_data):
 
     if not initialize_site_specific_data_only:
 
-      wq_tests_data['sun2_avg_wspd'] = wq_defines.NO_DATA
-      wq_tests_data['sun2_avg_wdir'] = wq_defines.NO_DATA
+      wq_tests_data['sun2_wind_speed'] = wq_defines.NO_DATA
+      wq_tests_data['sun2_wind_dir_val'] = wq_defines.NO_DATA
+      wq_tests_data['nos8661070_wind_spd'] = wq_defines.NO_DATA
+      wq_tests_data['nos8661070_wind_dir_val'] = wq_defines.NO_DATA
+      wq_tests_data['nos8661070_water_temp'] = wq_defines.NO_DATA
 
       for prev_hours in range(24, 192, 24):
         wq_tests_data['sun2_avg_salinity_%d' % (prev_hours)] = wq_defines.NO_DATA
@@ -447,13 +440,13 @@ class mb_wq_model_data(mb_wq_historical_data):
       #wq_tests_data['sun2_min_water_temp'] = wq_defines.NO_DATA
       #wq_tests_data['sun2_max_water_temp'] = wq_defines.NO_DATA
 
-    #Build variables for the base tide station.
-    var_name = 'tide_range_%s' % (self.tide_station)
-    wq_tests_data[var_name] = wq_defines.NO_DATA
-    var_name = 'tide_hi_%s' % (self.tide_station)
-    wq_tests_data[var_name] = wq_defines.NO_DATA
-    var_name = 'tide_lo_%s' % (self.tide_station)
-    wq_tests_data[var_name] = wq_defines.NO_DATA
+      #Build variables for the base tide station.
+      var_name = 'tide_range_%s' % (self.tide_station)
+      wq_tests_data[var_name] = wq_defines.NO_DATA
+      var_name = 'tide_hi_%s' % (self.tide_station)
+      wq_tests_data[var_name] = wq_defines.NO_DATA
+      var_name = 'tide_lo_%s' % (self.tide_station)
+      wq_tests_data[var_name] = wq_defines.NO_DATA
 
 
     for boundary in self.site.contained_by:
@@ -466,7 +459,7 @@ class mb_wq_model_data(mb_wq_historical_data):
         var_name = '%s_nexrad_dry_days_count' % (clean_var_boundary_name)
         wq_tests_data[var_name] = wq_defines.NO_DATA
 
-        var_name = '%s_nexrad_rainfall_intesity' % (clean_var_boundary_name)
+        var_name = '%s_nexrad_rainfall_intensity' % (clean_var_boundary_name)
         wq_tests_data[var_name] = wq_defines.NO_DATA
 
         var_name = '%s_nexrad_total_1_day_delay' % (clean_var_boundary_name)
@@ -501,6 +494,7 @@ class mb_wq_model_data(mb_wq_historical_data):
     #If we are resetting only the site specific data, no need to re-query these.
     if not reset_site_specific_data_only:
       self.get_sun2_data(start_date, wq_tests_data)
+      self.get_nos_data(start_date, wq_tests_data)
       self.get_tide_data(start_date, wq_tests_data)
 
     self.get_nexrad_data(start_date, wq_tests_data)
@@ -508,6 +502,105 @@ class mb_wq_model_data(mb_wq_historical_data):
     if self.logger:
       self.logger.debug("Site: %s Finished query data for datetime: %s" % (self.site.name, start_date))
 
+  def get_nos_data(self, start_date, wq_tests_data):
+      platform_handle = 'nos.8661070.WL'
+
+      if self.logger:
+        self.logger.debug("Start retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+
+      #Water temp id.
+      water_temp_id = self.xenia_obs_db.sensorExists('water_temperature', 'celsius', platform_handle, 1)
+
+      water_level_id = self.xenia_obs_db.sensorExists('water_level', 'm', platform_handle, 1)
+      #Get the sensor id for wind speed and wind direction
+      wind_spd_sensor_id = self.xenia_obs_db.sensorExists('wind_speed', 'm_s-1', platform_handle, 1)
+      wind_dir_sensor_id = self.xenia_obs_db.sensorExists('wind_from_direction', 'degrees_true', platform_handle, 1)
+
+      end_date = start_date
+      begin_date = start_date - timedelta(hours=24)
+      try:
+        water_temp_data  = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.sensor_id == water_temp_id)\
+          .filter(multi_obs.platform_handle.ilike(platform_handle))\
+          .filter(multi_obs.m_date >= begin_date)\
+          .filter(multi_obs.m_date < end_date)\
+          .order_by(multi_obs.m_date).all()
+
+        water_level_data  = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.sensor_id == water_level_id)\
+          .filter(multi_obs.platform_handle.ilike(platform_handle))\
+          .filter(multi_obs.m_date >= begin_date)\
+          .filter(multi_obs.m_date < end_date)\
+          .order_by(multi_obs.m_date).all()
+
+
+        wind_speed_data = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.sensor_id == wind_spd_sensor_id)\
+          .filter(multi_obs.platform_handle.ilike(platform_handle))\
+          .filter(multi_obs.m_date >= begin_date)\
+          .filter(multi_obs.m_date < end_date)\
+          .order_by(multi_obs.m_date).all()
+
+        wind_dir_data = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.sensor_id == wind_dir_sensor_id)\
+          .filter(multi_obs.platform_handle.ilike(platform_handle))\
+          .filter(multi_obs.m_date >= begin_date)\
+          .filter(multi_obs.m_date < end_date)\
+          .order_by(multi_obs.m_date).all()
+      except Exception, e:
+        if self.logger:
+          self.logger.exception(e)
+      else:
+
+        if len(water_temp_data):
+          wq_tests_data['nos8661070_water_temp'] = sum(rec.m_value for rec in water_temp_data) / len(water_temp_data)
+        self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_temp'], len(water_temp_data)))
+
+        if len(water_level_data):
+          wq_tests_data['nos8661070_water_level'] = sum(rec.m_value for rec in water_level_data) / len(water_level_data)
+        self.logger.debug("Platform: %s Avg Water Level: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_level'], len(water_level_data)))
+
+        wind_dir_tuples = []
+        direction_tuples = []
+        scalar_speed_avg = None
+        speed_count = 0
+        for wind_speed_row in wind_speed_data:
+          for wind_dir_row in wind_dir_data:
+            if wind_speed_row.m_date == wind_dir_row.m_date:
+              if self.logger:
+                self.logger.debug("Building tuple for Speed(%s): %f Dir(%s): %f" % (wind_speed_row.m_date, wind_speed_row.m_value, wind_dir_row.m_date, wind_dir_row.m_value))
+              if scalar_speed_avg is None:
+                scalar_speed_avg = 0
+              scalar_speed_avg += wind_speed_row.m_value
+              speed_count += 1
+              #Vector using both speed and direction.
+              wind_dir_tuples.append((wind_speed_row.m_value, wind_dir_row.m_value))
+              #Vector with speed as constant(1), and direction.
+              direction_tuples.append((1, wind_dir_row.m_value))
+              break
+
+        avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
+        if self.logger:
+          self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                            avg_speed_dir_components[0],
+                                                                                            avg_speed_dir_components[0] * meters_per_second_to_mph,
+                                                                                            avg_speed_dir_components[1]))
+
+        #Unity components, just direction with speeds all 1.
+        avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
+        scalar_speed_avg = scalar_speed_avg / speed_count
+        wq_tests_data['nos8661070_wind_spd'] = scalar_speed_avg * meters_per_second_to_mph
+        wq_tests_data['nos8661070_wind_dir_val'] = avg_dir_components[1]
+        if self.logger:
+          self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                                   scalar_speed_avg,
+                                                                                                   scalar_speed_avg * meters_per_second_to_mph,
+                                                                                                   avg_dir_components[1]))
+
+      if self.logger:
+        self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+
+      return
 
   def get_sun2_data(self, start_date, wq_tests_data):
       platform_handle = 'carocoops.SUN2.buoy'
@@ -596,8 +689,8 @@ class mb_wq_model_data(mb_wq_historical_data):
         #Unity components, just direction with speeds all 1.
         avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
         scalar_speed_avg = scalar_speed_avg / speed_count
-        wq_tests_data['sun2_avg_wspd'] = scalar_speed_avg * meters_per_second_to_mph
-        wq_tests_data['sun2_avg_wdir'] = avg_dir_components[1]
+        wq_tests_data['sun2_wind_speed'] = scalar_speed_avg * meters_per_second_to_mph
+        wq_tests_data['sun2_wind_dir_val'] = avg_dir_components[1]
         if self.logger:
           self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
                                                                                                    scalar_speed_avg,
@@ -605,6 +698,6 @@ class mb_wq_model_data(mb_wq_historical_data):
                                                                                                    avg_dir_components[1]))
 
       if self.logger:
-        self.logger.debug("Finished retrieving nws platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+        self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
       return

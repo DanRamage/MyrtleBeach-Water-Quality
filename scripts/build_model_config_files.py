@@ -108,9 +108,26 @@ def main():
                   model_config_parser.add_section(model_section)
                   model_config_parser.set(model_section, 'name', sample_site)
                   formula_string = row['Equation']
+
+                  no_log_10 = False
+                  if formula_string.find('etcoc =') != -1:
+                    no_log_10 = True
                   formula_string = formula_string.replace('[', '(')
                   formula_string = formula_string.replace(']', ')')
-                  formula_string = formula_string.replace('etcoc = ', '')
+
+                  formula_string = formula_string.replace('radar_rain_summary', '%s_nexrad_summary' % (location))
+                  formula_string = formula_string.replace('radar_rainfall_intensity_24', '%s_nexrad_rainfall_intensity' % (location))
+                  formula_string = formula_string.replace('radar_rainfall', '%s_nexrad_rainfall' % (location))
+                  formula_string = formula_string.replace('radar_preceding_dry_day_cnt', '%s_nexrad_dry_days_count' % (location))
+                  formula_string = formula_string.replace('radar_rain_total_one_day_delay', '%s_nexrad_total_1_day_delay' % (location))
+                  formula_string = formula_string.replace('radar_rain_total_two_day_delay', '%s_nexrad_total_2_day_delay' % (location))
+                  formula_string = formula_string.replace('radar_rain_total_three_day_delay', '%s_nexrad_total_3_day_delay' % (location))
+                  formula_string = formula_string.replace('range', 'tide_range_8661070')
+                  if no_log_10:
+                    formula_string = formula_string.replace('etcoc = ', '')
+                  else:
+                    formula_string = formula_string.replace('LOG10(etcoc) =', '')
+                  formula_string = 'Pow(10, %s)' % (formula_string)
                   for vb_replacement in VB_FUNCTIONS_REPLACE:
                     formula_string = formula_string.replace(vb_replacement[0], vb_replacement[1])
 
@@ -121,6 +138,7 @@ def main():
               except IOError, e:
                 if logger:
                   logger.exception(e)
+            del sites_list[:]
           line_num += 1
 
   logger.info("Log file closed.")

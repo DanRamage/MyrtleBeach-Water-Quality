@@ -87,7 +87,8 @@ class json_wq_results(wq_results):
         for rec in ensemble_data:
           site_metadata = rec['metadata']
           test_results = rec['models']
-          stats = rec['statistics']
+          if 'statistics' in rec:
+            stats = rec['statistics']
           test_data = []
           for test in test_results.tests:
             test_data.append({

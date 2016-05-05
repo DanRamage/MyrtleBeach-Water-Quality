@@ -15,7 +15,7 @@ from mako import exceptions as makoExceptions
 import simplejson as json
 
 from wq_prediction_tests import wqEquations
-from enterococcus_wq_test import EnterococcusPredictionTest
+from enterococcus_wq_test import EnterococcusPredictionTest,EnterococcusPredictionTestEx
 
 from mb_wq_data import mb_wq_model_data, mb_sample_sites
 from wq_results import _resolve, results_exporter
@@ -61,7 +61,7 @@ def build_test_objects(config_file, site_name, use_logging):
       if logger:
         logger.debug("Site: %s Model name: %s equation: %s" % (site_name, model_name, model_equation))
 
-      test_obj = EnterococcusPredictionTest(model_equation, site_name, model_name)
+      test_obj = EnterococcusPredictionTestEx(model_equation, site_name, model_name)
       test_obj.set_category_limits(entero_lo_limit, entero_hi_limit)
       model_list.append(test_obj)
 
@@ -212,7 +212,8 @@ def run_wq_models(**kwargs):
           """
 
           site_model_ensemble.append({'metadata': site,
-                                      'models': site_equations})
+                                      'models': site_equations,
+                                      'entero_value': None})
         except Exception,e:
           if logger:
             logger.exception(e)
