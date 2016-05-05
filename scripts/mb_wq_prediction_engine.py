@@ -156,7 +156,8 @@ def run_wq_models(**kwargs):
                                   xenia_obs_db_host=xenia_obs_db_host,
                                   xenia_obs_db_user=xenia_obs_db_user,
                                   xenia_obs_db_password=xenia_obs_db_password,
-                                  xenia_obs_db_name=xenia_obs_db_name
+                                  xenia_obs_db_name=xenia_obs_db_name,
+                                  use_logging=True
                                   )
 
     site_model_ensemble = []
