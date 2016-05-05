@@ -654,11 +654,13 @@ class mb_wq_model_data(mb_wq_historical_data):
       else:
         if len(salinity_data):
           wq_tests_data['sun2_salinity'] = sum(sal.m_value for sal in salinity_data) / len(salinity_data)
-        self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_salinity'], len(salinity_data)))
+        if self.logger:
+          self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_salinity'], len(salinity_data)))
 
         if len(water_temp_data):
           wq_tests_data['sun2_avg_water_temp_24'] = sum(temp.m_value for temp in water_temp_data) / len(water_temp_data)
-        self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_avg_water_temp_24'], len(water_temp_data)))
+        if self.logger:
+          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_avg_water_temp_24'], len(water_temp_data)))
 
         wind_dir_tuples = []
         direction_tuples = []
