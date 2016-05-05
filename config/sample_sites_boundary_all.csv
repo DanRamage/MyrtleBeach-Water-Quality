@@ -1,4 +1,7 @@
 WKT,EPAbeachID,SPLocation,Description,County,Boundary
+"POINT ( -78.608124 33.838112)","","WAC-001","59th Ave N","Horry",NMB1
+"POINT ( -78.623384 33.833667)","","WAC-002","45th Ave N","Horry",NMB1
+"POINT ( -78.637238 33.82885)","","WAC-003","30th Ave N","Horry",NMB1
 "POINT ( -78.653389 33.824127)","","WAC-004","16th Ave N","Horry",NMB2
 "POINT ( -78.668182 33.81889)","","WAC-005","3rd Ave N","Horry",NMB2
 "POINT ( -78.681816 33.813919)","","WAC-005A","7th Ave S","Horry",NMB2
@@ -39,3 +42,14 @@ WKT,EPAbeachID,SPLocation,Description,County,Boundary
 "POINT ( -78.981026 33.595291)","","WAC-035","13th Ave S, Surfside","Horry",Gardcty
 "POINT ( -78.987549 33.588184)","","WAC-036","Hawes Ave, Garden City","Horry",Gardcty
 "POINT ( -78.998749 33.57597)","","WAC-037","Azalea Ace, Garden City","Horry",Gardcty
+"POINT ( -79.028046 33.534336)","","WAC-038","Garden City Point","Horry",
+"POINT ( -79.048546 33.514484)","","WAC-039","North Access HB State Park","Horry",
+"POINT ( -79.065063 33.501568)","","WAC-040","Visitors Center HB State Park","Horry",
+"POINT ( -79.082657 33.48526)","","WAC-041","Songbird Lane, Litchfield Beach","Horry",
+"POINT ( -79.09568 33.469109)","","WAC-042","Litchfield Inn","Horry",
+"POINT ( -79.100632 33.461849)","","WAC-043A","1st L Past Gate","Horry",
+"POINT ( -79.116087 33.437032)","","WAC-044A","Public Access 2nd - Atlantic","Horry",
+"POINT ( -79.130806 33.412083)","","WAC-045A","Public Access Springs/ha PI","Horry",
+"POINT ( -79.138123 33.399624)","","WAC-046","Pawleys Is. South Parking","Horry",
+"POINT ( -79.148521 33.375084)","","WAC-047","Luvan Way, Debordieu","Horry",
+"POINT ( -79.151688 33.359783)","","WAC-048","Lafayette / Ocean Green Blvd, Debordieu","Horry",
