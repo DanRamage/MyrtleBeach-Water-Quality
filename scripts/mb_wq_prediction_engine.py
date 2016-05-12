@@ -268,7 +268,7 @@ def main():
     logConfFile = config_file.get('logging', 'prediction_engine')
     if logConfFile:
       logging.config.fileConfig(logConfFile)
-      logger = logging.getLogger(logging.getLogger(__name__))
+      logger = logging.getLogger(__name__)
       logger.info("Log file opened.")
       use_logging = True
 
