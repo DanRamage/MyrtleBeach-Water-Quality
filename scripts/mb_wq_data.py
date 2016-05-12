@@ -121,6 +121,7 @@ class mb_wq_historical_data(wq_data):
   """
   def __init__(self, **kwargs):
     wq_data.__init__(self, **kwargs)
+    self.logger = logging.getLogger(type(self).__name__)
 
     self.site = None
     #The main station we retrieve the values from.
