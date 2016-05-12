@@ -156,8 +156,7 @@ def run_wq_models(**kwargs):
                                   xenia_obs_db_host=xenia_obs_db_host,
                                   xenia_obs_db_user=xenia_obs_db_user,
                                   xenia_obs_db_password=xenia_obs_db_password,
-                                  xenia_obs_db_name=xenia_obs_db_name,
-                                  use_logging=True
+                                  xenia_obs_db_name=xenia_obs_db_name
                                   )
 
     site_model_ensemble = []
@@ -271,7 +270,7 @@ def main():
     logConfFile = config_file.get('logging', 'prediction_engine')
     if logConfFile:
       logging.config.fileConfig(logConfFile)
-      logger = logging.getLogger('mb_wq_predicition_logger')
+      logger = logging.getLogger(logging.getLogger(__name__))
       logger.info("Log file opened.")
       use_logging = True
 
