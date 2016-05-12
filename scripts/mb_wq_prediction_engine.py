@@ -31,9 +31,7 @@ Return:
   A list of models constructed.
 '''
 def build_test_objects(config_file, site_name, use_logging):
-  logger = None
-  if use_logging:
-    logger = logging.getLogger('build_test_objects_logger')
+  logger = logging.getLogger(__name__)
 
   model_list = []
   #Get the sites test configuration ini, then build the test objects.
@@ -166,7 +164,7 @@ def run_wq_models(**kwargs):
     for site in mb_sites:
       try:
         #Get all the models used for the particular sample site.
-        model_list = build_test_objects(config_file, site.name, kwargs['use_logging'])
+        model_list = build_test_objects(config_file, site.name)
         #Create the container for all the models.
         site_equations = wqEquations(site.name, model_list, True)
 
