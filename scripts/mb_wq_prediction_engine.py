@@ -113,9 +113,7 @@ def check_site_date_for_sampling_date(site_name, test_date, output_settings_ini,
   return entero_value
 
 def run_wq_models(**kwargs):
-  logger = None
-  if kwargs['use_logging']:
-    logger = logging.getLogger('run_wq_models_logger')
+  logger = logging.getLogger(__name__)
   prediction_testrun_date = datetime.now()
 
 
@@ -306,8 +304,7 @@ def main():
     try:
       for process_date in dates_to_process:
         run_wq_models(begin_date=process_date,
-                      config_file_name=options.config_file,
-                      use_logging=use_logging)
+                      config_file_name=options.config_file)
     except Exception, e:
       logger.exception(e)
 
