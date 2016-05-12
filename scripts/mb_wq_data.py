@@ -378,7 +378,7 @@ class mb_wq_historical_data(wq_data):
 
 class mb_wq_model_data(mb_wq_historical_data):
   def __init__(self, **kwargs):
-    wq_data.__init__(self, **kwargs)
+    mb_wq_historical_data.__init__(self, **kwargs)
 
     self.site = None
     #The main station we retrieve the values from.
