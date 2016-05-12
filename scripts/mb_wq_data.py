@@ -386,23 +386,20 @@ class mb_wq_model_data(mb_wq_historical_data):
     self.query_tide_data = True
 
 
-    if self.logger:
-      self.logger.debug("Connection to xenia db: %s" % (kwargs['xenia_database_name']))
+    self.logger.debug("Connection to xenia db: %s" % (kwargs['xenia_database_name']))
     self.xenia_db = wqDB(kwargs['xenia_database_name'], type(self).__name__)
 
     try:
       #Connect to the xenia database we use for observations aggregation.
       self.xenia_obs_db = xeniaAlchemy()
       if self.xenia_obs_db.connectDB(kwargs['xenia_obs_db_type'], kwargs['xenia_obs_db_user'], kwargs['xenia_obs_db_password'], kwargs['xenia_obs_db_host'], kwargs['xenia_obs_db_name'], False):
-        if self.logger:
-          self.logger.info("Succesfully connect to DB: %s at %s" %(kwargs['xenia_obs_db_name'],kwargs['xenia_obs_db_host']))
+        self.logger.info("Succesfully connect to DB: %s at %s" %(kwargs['xenia_obs_db_name'],kwargs['xenia_obs_db_host']))
       else:
         self.logger.error("Unable to connect to DB: %s at %s." %(kwargs['xenia_obs_db_name'],kwargs['xenia_obs_db_host']))
 
 
     except Exception,e:
-      if self.logger:
-        self.logger.exception(e)
+      self.logger.exception(e)
       raise
 
   def __del__(self):
@@ -472,8 +469,7 @@ class mb_wq_model_data(mb_wq_historical_data):
         wq_tests_data[var_name] = wq_defines.NO_DATA
 
 
-    if self.logger:
-      self.logger.debug("Finished creating and initializing data dict.")
+    self.logger.debug("Finished creating and initializing data dict.")
 
     return
 
@@ -488,8 +484,7 @@ class mb_wq_model_data(mb_wq_historical_data):
     None
   """
   def query_data(self, start_date, end_date, wq_tests_data, reset_site_specific_data_only):
-    if self.logger:
-      self.logger.debug("Site: %s start query data for datetime: %s" % (self.site.name, start_date))
+    self.logger.debug("Site: %s start query data for datetime: %s" % (self.site.name, start_date))
 
     self.initialize_return_data(wq_tests_data, reset_site_specific_data_only)
 
@@ -501,14 +496,12 @@ class mb_wq_model_data(mb_wq_historical_data):
 
     self.get_nexrad_data(start_date, wq_tests_data)
 
-    if self.logger:
-      self.logger.debug("Site: %s Finished query data for datetime: %s" % (self.site.name, start_date))
+    self.logger.debug("Site: %s Finished query data for datetime: %s" % (self.site.name, start_date))
 
   def get_nos_data(self, start_date, wq_tests_data):
       platform_handle = 'nos.8661070.WL'
 
-      if self.logger:
-        self.logger.debug("Start retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+      self.logger.debug("Start retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
       #Water temp id.
       water_temp_id = self.xenia_obs_db.sensorExists('water_temperature', 'celsius', platform_handle, 1)
@@ -546,19 +539,16 @@ class mb_wq_model_data(mb_wq_historical_data):
           .filter(multi_obs.sensor_id == wind_dir_sensor_id)\
           .order_by(multi_obs.m_date).all()
       except Exception, e:
-        if self.logger:
-          self.logger.exception(e)
+        self.logger.exception(e)
       else:
 
         if len(water_temp_data):
           wq_tests_data['nos8661070_water_temp'] = sum(rec.m_value for rec in water_temp_data) / len(water_temp_data)
-        if self.logger:
-          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_temp'], len(water_temp_data)))
+        self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_temp'], len(water_temp_data)))
 
         if len(water_level_data):
           wq_tests_data['nos8661070_water_level'] = sum(rec.m_value for rec in water_level_data) / len(water_level_data)
-        if self.logger:
-          self.logger.debug("Platform: %s Avg Water Level: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_level'], len(water_level_data)))
+        self.logger.debug("Platform: %s Avg Water Level: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_level'], len(water_level_data)))
 
         wind_dir_tuples = []
         direction_tuples = []
@@ -567,8 +557,7 @@ class mb_wq_model_data(mb_wq_historical_data):
         for wind_speed_row in wind_speed_data:
           for wind_dir_row in wind_dir_data:
             if wind_speed_row.m_date == wind_dir_row.m_date:
-              if self.logger:
-                self.logger.debug("Building tuple for Speed(%s): %f Dir(%s): %f" % (wind_speed_row.m_date, wind_speed_row.m_value, wind_dir_row.m_date, wind_dir_row.m_value))
+              self.logger.debug("Building tuple for Speed(%s): %f Dir(%s): %f" % (wind_speed_row.m_date, wind_speed_row.m_value, wind_dir_row.m_date, wind_dir_row.m_value))
               if scalar_speed_avg is None:
                 scalar_speed_avg = 0
               scalar_speed_avg += wind_speed_row.m_value
@@ -580,8 +569,7 @@ class mb_wq_model_data(mb_wq_historical_data):
               break
 
         avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
-        if self.logger:
-          self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+        self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
                                                                                             avg_speed_dir_components[0],
                                                                                             avg_speed_dir_components[0] * meters_per_second_to_mph,
                                                                                             avg_speed_dir_components[1]))
@@ -591,22 +579,19 @@ class mb_wq_model_data(mb_wq_historical_data):
         scalar_speed_avg = scalar_speed_avg / speed_count
         wq_tests_data['nos8661070_wind_spd'] = scalar_speed_avg * meters_per_second_to_mph
         wq_tests_data['nos8661070_wind_dir_val'] = avg_dir_components[1]
-        if self.logger:
-          self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+        self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
                                                                                                    scalar_speed_avg,
                                                                                                    scalar_speed_avg * meters_per_second_to_mph,
                                                                                                    avg_dir_components[1]))
 
-      if self.logger:
-        self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+      self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
       return
 
   def get_sun2_data(self, start_date, wq_tests_data):
       platform_handle = 'carocoops.SUN2.buoy'
 
-      if self.logger:
-        self.logger.debug("Start retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+      self.logger.debug("Start retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
       #Get the sensor id for salinity
       salinity_id = self.xenia_obs_db.sensorExists('salinity', 'psu', platform_handle, 1)
@@ -645,18 +630,15 @@ class mb_wq_model_data(mb_wq_historical_data):
           .filter(multi_obs.sensor_id == wind_dir_sensor_id)\
           .order_by(multi_obs.m_date).all()
       except Exception, e:
-        if self.logger:
-          self.logger.exception(e)
+        self.logger.exception(e)
       else:
         if len(salinity_data):
           wq_tests_data['sun2_salinity'] = sum(sal.m_value for sal in salinity_data) / len(salinity_data)
-        if self.logger:
-          self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_salinity'], len(salinity_data)))
+        self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_salinity'], len(salinity_data)))
 
         if len(water_temp_data):
           wq_tests_data['sun2_water_temp'] = sum(temp.m_value for temp in water_temp_data) / len(water_temp_data)
-        if self.logger:
-          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_water_temp'], len(water_temp_data)))
+        self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_water_temp'], len(water_temp_data)))
 
         wind_dir_tuples = []
         direction_tuples = []
@@ -665,8 +647,7 @@ class mb_wq_model_data(mb_wq_historical_data):
         for wind_speed_row in wind_speed_data:
           for wind_dir_row in wind_dir_data:
             if wind_speed_row.m_date == wind_dir_row.m_date:
-              if self.logger:
-                self.logger.debug("Building tuple for Speed(%s): %f Dir(%s): %f" % (wind_speed_row.m_date, wind_speed_row.m_value, wind_dir_row.m_date, wind_dir_row.m_value))
+              self.logger.debug("Building tuple for Speed(%s): %f Dir(%s): %f" % (wind_speed_row.m_date, wind_speed_row.m_value, wind_dir_row.m_date, wind_dir_row.m_value))
               if scalar_speed_avg is None:
                 scalar_speed_avg = 0
               scalar_speed_avg += wind_speed_row.m_value
@@ -678,24 +659,21 @@ class mb_wq_model_data(mb_wq_historical_data):
               break
 
         avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
-        if self.logger:
-          self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
-                                                                                            avg_speed_dir_components[0],
-                                                                                            avg_speed_dir_components[0] * meters_per_second_to_mph,
-                                                                                            avg_speed_dir_components[1]))
+        self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                          avg_speed_dir_components[0],
+                                                                                          avg_speed_dir_components[0] * meters_per_second_to_mph,
+                                                                                          avg_speed_dir_components[1]))
 
         #Unity components, just direction with speeds all 1.
         avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
         scalar_speed_avg = scalar_speed_avg / speed_count
         wq_tests_data['sun2_wind_speed'] = scalar_speed_avg * meters_per_second_to_mph
         wq_tests_data['sun2_wind_dir_val'] = avg_dir_components[1]
-        if self.logger:
-          self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
-                                                                                                   scalar_speed_avg,
-                                                                                                   scalar_speed_avg * meters_per_second_to_mph,
-                                                                                                   avg_dir_components[1]))
+        self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                                 scalar_speed_avg,
+                                                                                                 scalar_speed_avg * meters_per_second_to_mph,
+                                                                                                 avg_dir_components[1]))
 
-      if self.logger:
-        self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+      self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
       return
