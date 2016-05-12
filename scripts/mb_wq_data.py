@@ -18,7 +18,7 @@ from wqXMRGProcessing import wqDB
 from wqHistoricalData import station_geometry,sampling_sites, wq_defines, geometry_list
 from date_time_utils import get_utc_epoch
 from NOAATideData import noaaTideData
-from xeniaSQLAlchemy import xeniaAlchemy, multi_obs
+from xeniaSQLAlchemy import xeniaAlchemy, multi_obs, func
 from stats import calcAvgSpeedAndDir
 from romsTools import closestCellFromPtInPolygon
 
@@ -199,6 +199,8 @@ class mb_wq_historical_data(wq_data):
 
     wq_tests_data['sun2_wind_speed'] = wq_defines.NO_DATA
     wq_tests_data['sun2_wind_dir_val'] = wq_defines.NO_DATA
+    wq_tests_data['sun2_water_temp'] = wq_defines.NO_DATA
+    wq_tests_data['sun2_salinity'] = wq_defines.NO_DATA
 
     wq_tests_data['nos8661070_wind_spd'] = wq_defines.NO_DATA
     wq_tests_data['nos8661070_wind_dir_val'] = wq_defines.NO_DATA
@@ -436,7 +438,7 @@ class mb_wq_model_data(mb_wq_historical_data):
         wq_tests_data['sun2_min_salinity_%d' % (prev_hours)] = wq_defines.NO_DATA
         wq_tests_data['sun2_max_salinity_%d' % (prev_hours)] = wq_defines.NO_DATA
 
-      wq_tests_data['sun2_avg_water_temp_24'] = wq_defines.NO_DATA
+      #wq_tests_data['sun2_avg_water_temp_24'] = wq_defines.NO_DATA
       #wq_tests_data['sun2_min_water_temp'] = wq_defines.NO_DATA
       #wq_tests_data['sun2_max_water_temp'] = wq_defines.NO_DATA
 
@@ -520,32 +522,28 @@ class mb_wq_model_data(mb_wq_historical_data):
       begin_date = start_date - timedelta(hours=24)
       try:
         water_temp_data  = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == water_temp_id)\
-          .filter(multi_obs.platform_handle.ilike(platform_handle))\
-          .filter(multi_obs.m_date >= begin_date)\
-          .filter(multi_obs.m_date < end_date)\
           .order_by(multi_obs.m_date).all()
 
         water_level_data  = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == water_level_id)\
-          .filter(multi_obs.platform_handle.ilike(platform_handle))\
-          .filter(multi_obs.m_date >= begin_date)\
-          .filter(multi_obs.m_date < end_date)\
           .order_by(multi_obs.m_date).all()
 
 
         wind_speed_data = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == wind_spd_sensor_id)\
-          .filter(multi_obs.platform_handle.ilike(platform_handle))\
-          .filter(multi_obs.m_date >= begin_date)\
-          .filter(multi_obs.m_date < end_date)\
           .order_by(multi_obs.m_date).all()
 
         wind_dir_data = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == wind_dir_sensor_id)\
-          .filter(multi_obs.platform_handle.ilike(platform_handle))\
-          .filter(multi_obs.m_date >= begin_date)\
-          .filter(multi_obs.m_date < end_date)\
           .order_by(multi_obs.m_date).all()
       except Exception, e:
         if self.logger:
@@ -623,32 +621,28 @@ class mb_wq_model_data(mb_wq_historical_data):
       end_date = start_date
       begin_date = start_date - timedelta(hours=24)
       try:
-        salinity_data  = self.xenia_obs_db.session.query(multi_obs)\
+        salinity_data = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == salinity_id)\
-          .filter(multi_obs.platform_handle.ilike(platform_handle))\
-          .filter(multi_obs.m_date >= begin_date)\
-          .filter(multi_obs.m_date < end_date)\
           .order_by(multi_obs.m_date).all()
 
         water_temp_data  = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == water_temp_id)\
-          .filter(multi_obs.platform_handle.ilike(platform_handle))\
-          .filter(multi_obs.m_date >= begin_date)\
-          .filter(multi_obs.m_date < end_date)\
           .order_by(multi_obs.m_date).all()
 
         wind_speed_data = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == wind_spd_sensor_id)\
-          .filter(multi_obs.platform_handle.ilike(platform_handle))\
-          .filter(multi_obs.m_date >= begin_date)\
-          .filter(multi_obs.m_date < end_date)\
           .order_by(multi_obs.m_date).all()
 
         wind_dir_data = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == wind_dir_sensor_id)\
-          .filter(multi_obs.platform_handle.ilike(platform_handle))\
-          .filter(multi_obs.m_date >= begin_date)\
-          .filter(multi_obs.m_date < end_date)\
           .order_by(multi_obs.m_date).all()
       except Exception, e:
         if self.logger:
@@ -660,9 +654,9 @@ class mb_wq_model_data(mb_wq_historical_data):
           self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_salinity'], len(salinity_data)))
 
         if len(water_temp_data):
-          wq_tests_data['sun2_avg_water_temp_24'] = sum(temp.m_value for temp in water_temp_data) / len(water_temp_data)
+          wq_tests_data['sun2_water_temp'] = sum(temp.m_value for temp in water_temp_data) / len(water_temp_data)
         if self.logger:
-          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_avg_water_temp_24'], len(water_temp_data)))
+          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_water_temp'], len(water_temp_data)))
 
         wind_dir_tuples = []
         direction_tuples = []
