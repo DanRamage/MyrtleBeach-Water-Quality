@@ -219,13 +219,12 @@ def run_wq_models(**kwargs):
     output_results(site_model_ensemble=site_model_ensemble,
                    config_file_name=output_settings_ini,
                    prediction_date=kwargs['begin_date'],
-                   prediction_run_date=prediction_testrun_date,
-                   use_logging=kwargs['use_logging'])
+                   prediction_run_date=prediction_testrun_date)
 
   return
 
 def output_results(**kwargs):
-  logger = logging.getLogger('output_results_logger')
+  logger = logging.getLogger(__name__)
   logger.debug("Starting output_results")
   record = {
     'prediction_date': kwargs['prediction_date'].astimezone(timezone("US/Eastern")).strftime("%Y-%m-%d %H:%M:%S"),
@@ -233,7 +232,7 @@ def output_results(**kwargs):
     'ensemble_tests': kwargs['site_model_ensemble']
   }
   try:
-    results_out = results_exporter(kwargs['use_logging'])
+    results_out = results_exporter(True)
     results_out.load_configuration(kwargs['config_file_name'])
     results_out.output(record)
   except Exception, e:
