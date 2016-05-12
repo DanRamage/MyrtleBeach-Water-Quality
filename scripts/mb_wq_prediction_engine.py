@@ -30,7 +30,7 @@ Parameters:
 Return:
   A list of models constructed.
 '''
-def build_test_objects(config_file, site_name, use_logging):
+def build_test_objects(config_file, site_name):
   logger = logging.getLogger(__name__)
 
   model_list = []
