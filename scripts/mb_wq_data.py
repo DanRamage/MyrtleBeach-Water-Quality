@@ -129,7 +129,6 @@ class mb_wq_historical_data(wq_data):
     self.tide_offset_settings =  None
     self.tide_data_obj = None
 
-    self.model_bbox = kwargs['model_bbox']
     self.model_within_polygon = Polygon(kwargs['model_within_polygon'])
 
 
