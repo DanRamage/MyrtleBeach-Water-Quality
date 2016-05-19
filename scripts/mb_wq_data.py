@@ -19,9 +19,10 @@ from wqHistoricalData import station_geometry,sampling_sites, wq_defines, geomet
 from date_time_utils import get_utc_epoch
 from NOAATideData import noaaTideData
 from xeniaSQLAlchemy import xeniaAlchemy, multi_obs, func
+from sqlalchemy import or_
 from stats import calcAvgSpeedAndDir
 from romsTools import closestCellFromPtInPolygon
-
+from xenia import qaqcTestFlags
 meters_per_second_to_mph = 2.23694
 
 
@@ -606,16 +607,19 @@ class mb_wq_model_data(mb_wq_historical_data):
       end_date = start_date
       begin_date = start_date - timedelta(hours=24)
       try:
+        #(qc_level = %d OR qc_level IS NULL)
         salinity_data = self.xenia_obs_db.session.query(multi_obs)\
           .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == salinity_id)\
+          .filter(or_(multi_obs.qc_level == qaqcTestFlags.DATA_QUAL_GOOD, multi_obs.qc_level == None))\
           .order_by(multi_obs.m_date).all()
 
         water_temp_data  = self.xenia_obs_db.session.query(multi_obs)\
           .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == water_temp_id)\
+          .filter(or_(multi_obs.qc_level == qaqcTestFlags.DATA_QUAL_GOOD, multi_obs.qc_level == None))\
           .order_by(multi_obs.m_date).all()
 
         wind_speed_data = self.xenia_obs_db.session.query(multi_obs)\
