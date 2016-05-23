@@ -80,6 +80,8 @@ def main():
 
     for model_csv_file in model_csv_list:
       with open(model_csv_file, "rU") as model_file_obj:
+        path, filename_ext = os.path.split(model_csv_file)
+        filename, ext = os.path.splitext(filename_ext)
         model_file_reader = csv.DictReader(model_file_obj, delimiter=',', quotechar='"', fieldnames=header_row)
         line_num = 0
         current_watershed = None
@@ -102,11 +104,18 @@ def main():
               model_config_parser = ConfigParser.ConfigParser()
               model_config_outfile_name = os.path.join(options.dest_dir, '%s.ini' % (sample_site.lower()))
               try:
+                #Check to see if the model ini file exists.
+                ini_exists = False
+                model_num = 1
+                if os.path.isfile(model_config_outfile_name):
+                  model_config_parser.read(model_config_outfile_name)
+                  ini_exists = True
+                  model_num = model_config_parser.getint("settings", "model_count") + 1
                 with open(model_config_outfile_name, 'w') as model_config_ini_obj:
-                  model_section = "model_1"
-                  model_config_parser.add_section("settings")
-                  model_config_parser.add_section(model_section)
-                  model_config_parser.set(model_section, 'name', sample_site)
+
+                  if not ini_exists:
+                    model_config_parser.add_section("settings")
+
                   formula_string = row['Equation']
 
                   no_log_10 = False
@@ -131,8 +140,12 @@ def main():
                   for vb_replacement in VB_FUNCTIONS_REPLACE:
                     formula_string = formula_string.replace(vb_replacement[0], vb_replacement[1])
 
+                  model_section = "model_%d" % model_num
+                  model_name = "%s-%s" % (sample_site, filename)
+                  model_config_parser.add_section(model_section)
+                  model_config_parser.set(model_section, 'name', model_name)
                   model_config_parser.set(model_section, 'formula', formula_string)
-                  model_config_parser.set("settings", "model_count", 1)
+                  model_config_parser.set("settings", "model_count", model_num)
                   model_config_parser.write(model_config_ini_obj)
 
               except IOError, e:
