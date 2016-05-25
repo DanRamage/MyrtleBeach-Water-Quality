@@ -1,6 +1,6 @@
 import sys
 from os.path import dirname, realpath
-sys.path.append('../../commonfiles/python')
+sys.path.append('../commonfiles/python')
 sys.path.append(dirname(realpath(__file__)))
 from datetime import datetime
 from pytz import timezone
