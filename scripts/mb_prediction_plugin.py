@@ -26,7 +26,7 @@ class mb_prediction_plugin(wq_prediction_engine_plugin):
     logConfFile = config_file.get('logging', 'prediction_engine')
 
     logging.config.fileConfig(logConfFile)
-    logger = logging.getLogger("mb_logger")
+    logger = logging.getLogger(self.name)
     logger.debug("run_wq_models Started. Process: %s" % (self.name))
     dates_to_process = []
     if self.process_dates is not None:
@@ -59,3 +59,6 @@ class mb_prediction_plugin(wq_prediction_engine_plugin):
     except Exception, e:
       logger.exception(e)
     logger.debug("run_wq_models Finished")
+    #Force the logging handlers to close. For whatever reason, most likely
+    #multiprocessing, they can remain open and not send out remaining messages.
+    [hand.close() for hand in logger.root.handlers]
