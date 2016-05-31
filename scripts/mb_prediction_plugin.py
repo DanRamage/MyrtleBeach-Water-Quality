@@ -13,11 +13,11 @@ from mb_wq_prediction_engine import run_wq_models
 class mb_prediction_plugin(wq_prediction_engine_plugin):
 
   def inititalize_plugin(self, **kwargs):
-    self.logger.debug("inititalize_plugin Started")
+    #self.logger.debug("inititalize_plugin Started")
     self.config_file = kwargs['ini']
     self.process_dates = kwargs.get('process_date', None)
     self.name = kwargs['name']
-    self.logger.debug("inititalize_plugin Finished")
+    #self.logger.debug("inititalize_plugin Finished")
 
   #def run_wq_models(self, **kwargs):
   def run(self):
