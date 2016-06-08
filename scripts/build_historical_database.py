@@ -126,6 +126,7 @@ pier_obs_to_xenia = {
     "xenia_units": "%"
   }
 }
+pier_met_sensors = ["Air Temp","BP","RH","Wind Dir","Wind Speed","Rainfall","Air Temp","Barometric Pressure","Relative Humidity","Wind Direction" ]
 
 def process_pier_files(platform_name,
                       file_name,
@@ -197,9 +198,10 @@ def process_pier_files(platform_name,
             if matched_obs is not None:
               #Files that don't use Surface or Bottom indicators, this is how we differentiate
               #as bottom are always first in header list.
-              if obs_key not in found_obs:
-                s_order = 2
-              found_obs.append(obs_key)
+              if obs_key not in pier_met_sensors:
+                if obs_key not in found_obs:
+                  s_order = 2
+                found_obs.append(obs_key)
 
               date = row[date_ndx]
               #date format is incosistent, sometimes leadings zeros, other times not.
@@ -216,8 +218,8 @@ def process_pier_files(platform_name,
                   obs_val = units_convereter.measurementConvert(obs_val, obs_info['units'], obs_info['xenia_units'])
                   if obs_val is None:
                     obs_val
-                logger.debug("Adding obs: %s(%s) Date: %s Value: %s S_Order: %d" %\
-                             (obs_info['xenia_name'], obs_info['xenia_units'], utc_obs_date.strftime("%Y-%m-%d %H:%M:%S"), obs_val, s_order))
+                logger.debug("Row: %d Adding obs: %s(%s) Date: %s Value: %s S_Order: %d" %\
+                             (line_num, obs_info['xenia_name'], obs_info['xenia_units'], utc_obs_date.strftime("%Y-%m-%d %H:%M:%S"), obs_val, s_order))
                 try:
                   xenia_db.addMeasurement(obs_info['xenia_name'],
                                           obs_info['xenia_units'],
@@ -233,6 +235,10 @@ def process_pier_files(platform_name,
                 except Exception as e:
                   logger.exception(e)
               break
+          if matched_obs is None:
+            if header_key != 'Date' and header_key != 'Time':
+              logger.error("Could not match obs.")
+              sys.exit(-1)
       line_num += 1
   return
 def main():
