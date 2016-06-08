@@ -1,0 +1,7 @@
+#!/bin/bash
+
+source /usr/local/virtualenv/pyenv-2.7.11/bin/activate;
+
+cd /home/xeniaprod/scripts/MyrtleBeach-Water-Quality/scripts;
+
+python build_historical_database.py --ConfigFile=/home/xeniaprod/scripts/MyrtleBeach-Water-Quality/config/mb_historic_data_config.ini --DataFile="/home/xeniaprod/scripts/MyrtleBeach-Water-Quality/data/historic/2nd Ave Pier 04042012 to 06052014.csv" --Header="Date,Time,Bottom Depth,Bottom Temp,Bottom Salinity ,Bottom DO Conc,Bottom DO Saturation ,Bottom pH,Bottom  Chlorophyll,Bottom Turbidity,Surface Depth,Surface Temp ,Surface Salinity ,Surface DO Conc,Surface DO saturation ,Surface pH,Surface Chlorophyll,Surface Turbidity+,Air Temp ,Barometric Pressure,Relative Humidity,Wind Direction ,Wind Speed,Rainfall" --FirstDataRow=2 --PlatformName=lbhmc.2ndAveNorth.pier
