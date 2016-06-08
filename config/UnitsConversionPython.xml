@@ -171,6 +171,11 @@
     <units>&#x00B5;g/L</units>
   </unit_conversion>
 
+  <unit_conversion id="in_to_mm">
+    <conversion_formula>("%f" % (var1*25.4))</conversion_formula>
+    <units>mm</units>
+  </unit_conversion>
+
   <unit_conversion id="mm_to_mm">
     <conversion_formula>("%f" % (var1))</conversion_formula>
     <units>mm</units>
