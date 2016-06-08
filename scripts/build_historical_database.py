@@ -9,7 +9,6 @@ from pytz import timezone
 import optparse
 import ConfigParser
 import csv
-from build_tide_file import create_tide_data_file_mp
 from unitsConversion import uomconversionFunctions
 from wqDatabase import wqDB
 
