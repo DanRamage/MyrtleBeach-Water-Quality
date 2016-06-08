@@ -1,0 +1,522 @@
+<unit_conversion_list>
+
+  <!-- below are the unit conversions % ( mainly going from si(metric)) to en(english)) units -->
+  <!-- be sure to include unit self (e.g. % ( m_to_m)) conversion reference which also acts as a data formatting statement -->
+
+  <unit_conversion id="percent_to_percent">
+    <conversion_formula>("%.1f" % (var1))</conversion_formula>
+    <units>%</units>
+  </unit_conversion>
+
+  <unit_conversion id="mb_to_mb">
+    <conversion_formula>("%.1f" % (var1))</conversion_formula>
+    <units>mb</units>
+  </unit_conversion>
+
+  <unit_conversion id="mb_to_inches_mercury">
+    <conversion_formula>("%.2f" % (var1*0.0295333727))</conversion_formula>
+    <units>inHg</units>
+  </unit_conversion>
+
+  <unit_conversion id="inches_mercury_to_mb">
+    <conversion_formula>("%.2f" % (var1*33.86))</conversion_formula>
+    <units>mb</units>
+  </unit_conversion>
+
+  <unit_conversion id="inHg_to_mb">
+    <conversion_formula>("%.2f" % (var1*33.86))</conversion_formula>
+    <units>mb</units>
+  </unit_conversion>
+
+  <unit_conversion id="mmhg_to_mb">
+    <conversion_formula>("%.2f" % (var1/0.75218))</conversion_formula>
+    <units>mb</units>
+  </unit_conversion>
+
+  <unit_conversion id="celsius_to_celsius">
+    <conversion_formula>("%.2f" % (var1))</conversion_formula>
+    <units>&#x00B0;C</units>
+  </unit_conversion>
+
+  <unit_conversion id="celsius_to_fahrenheit">
+    <conversion_formula>("%.1f" % (var1*9/5+32))</conversion_formula>
+    <units>&#x00B0;F</units>
+  </unit_conversion>
+
+  <unit_conversion id="fahrenheit_to_celsius">
+    <conversion_formula>("%.1f" % ((var1-32.0)*(5.0/9.0)))</conversion_formula>
+    <units>&#x00B0;F</units>
+  </unit_conversion>
+
+  <unit_conversion id="F_to_celsius">
+    <conversion_formula>("%.1f" % ((var1-32.0)*(5.0/9.0)))</conversion_formula>
+    <units>&#x00B0;F</units>
+  </unit_conversion>
+
+  <unit_conversion id="degrees_true_to_degrees_true">
+    <conversion_formula>("%d" % (var1))</conversion_formula>
+    <units>&#x00B0; From N</units>
+  </unit_conversion>
+
+  <unit_conversion id="m_s-1_to_m_s-1">
+    <conversion_formula>("%.2f" % (var1))</conversion_formula>
+    <units>m_s-1</units>
+  </unit_conversion>
+
+  <unit_conversion id="m_s-1_to_cm_s-1">
+    <conversion_formula>("%.2f" % (var1/100.0))</conversion_formula>
+    <units>cm_s-1</units>
+  </unit_conversion>
+
+  <unit_conversion id="mm_s-1_to_cm_s-1">
+    <conversion_formula>("%f" % (var1/10.0))</conversion_formula>
+    <units>cm_s-1</units>
+  </unit_conversion>
+
+  <unit_conversion id="m_s-1_to_knots">
+    <conversion_formula>("%.1f" % (var1*1.9438))</conversion_formula>
+    <units>knots</units>
+  </unit_conversion>
+
+  <unit_conversion id="cm_s-1_to_knots">
+    <conversion_formula>("%.1f" % (var1*.019438))</conversion_formula>
+    <units>knots</units>
+  </unit_conversion>
+
+  <unit_conversion id="m_s-1_to_mph">
+    <conversion_formula>("%.1f" % (var1*2.2369))</conversion_formula>
+    <units>mph</units>
+  </unit_conversion>
+
+  <unit_conversion id="mph_to_m_s-1">
+    <conversion_formula>("%.3f" % (var1*0.44704))</conversion_formula>
+    <units>mph</units>
+  </unit_conversion>
+
+
+  <unit_conversion id="millimeter_to_millimeter">
+    <conversion_formula>("%.1f" % (var1))</conversion_formula>
+    <units>mm</units>
+  </unit_conversion>
+
+  <unit_conversion id="millimeter_to_inch">
+    <conversion_formula>("%.2f" % (var1*0.039))</conversion_formula>
+    <units>in</units>
+  </unit_conversion>
+
+  <unit_conversion id="m_to_m">
+    <conversion_formula>("%.2f" % (var1))</conversion_formula>
+    <units>m</units>
+  </unit_conversion>
+
+  <unit_conversion id="m_to_f">
+    <conversion_formula>("%.2f" % (var1*3.28))</conversion_formula>
+    <units>ft</units>
+  </unit_conversion>
+
+  <unit_conversion id="m_to_ft">
+    <conversion_formula>("%.2f" % (var1*3.28))</conversion_formula>
+    <units>ft</units>
+  </unit_conversion>
+
+  <unit_conversion id="mS_cm-1_to_mS_cm-1">
+    <conversion_formula>("%.2f" % (var1))</conversion_formula>
+    <units>mS/cm</units>
+  </unit_conversion>
+
+  <unit_conversion id="psu_to_psu">
+    <conversion_formula>("%.2f" % (var1))</conversion_formula>
+    <units>psu</units>
+  </unit_conversion>
+
+  <unit_conversion id="mg_L-1_to_mg_L-1">
+    <conversion_formula>("%.2f" % (var1))</conversion_formula>
+    <units>mg/L</units>
+  </unit_conversion>
+
+  <unit_conversion id="mg/L_to_mg_L-1">
+    <conversion_formula>("%.2f" % (var1))</conversion_formula>
+    <units>mg/L</units>
+  </unit_conversion>
+
+  <unit_conversion id="units_to_units">
+    <conversion_formula>("%.2f" % (var1))</conversion_formula>
+    <units></units>
+  </unit_conversion>
+
+  <unit_conversion id="ppt_to_psu">
+    <conversion_formula>("%f" % (var1))</conversion_formula>
+    <units>psu</units>
+  </unit_conversion>
+
+  <unit_conversion id="ntu_to_ntu">
+    <conversion_formula>("%.2f" % (var1))</conversion_formula>
+    <units>ntu</units>
+  </unit_conversion>
+
+  <unit_conversion id="cells_mL-1_to_cells_mL-1">
+    <conversion_formula>("%f" % (var1))</conversion_formula>
+    <units>Cells/mL</units>
+  </unit_conversion>
+  <unit_conversion id="uM_to_uM">
+    <conversion_formula>("%f" % (var1))</conversion_formula>
+    <units>&#x00B5;M</units>
+  </unit_conversion>
+  <unit_conversion id="ug_L-1_to_ug_L-1">
+    <conversion_formula>("%f" % (var1))</conversion_formula>
+    <units>&#x00B5;g/L</units>
+  </unit_conversion>
+  <unit_conversion id="ug/L_to_ug_L-1">
+    <conversion_formula>("%f" % (var1))</conversion_formula>
+    <units>&#x00B5;g/L</units>
+  </unit_conversion>
+
+  <unit_conversion id="mm_to_mm">
+    <conversion_formula>("%f" % (var1))</conversion_formula>
+    <units>mm</units>
+  </unit_conversion>
+  <unit_conversion id="w_m^2_to_w_m^2">
+    <conversion_formula>("%f" % (var1))</conversion_formula>
+    <units>watts/m&#x00B2;</units>
+  </unit_conversion>
+  <unit_conversion id="millimoles_per_m^2_to_millimoles_per_m^2">
+    <conversion_formula>("%.1f" % (var1))</conversion_formula>
+    <units>millimoles/m&#x00B2;</units>
+  </unit_conversion>
+
+  <unit_conversion id="Degrees_to_degrees_true">
+    <conversion_formula>("%f" % (var1))</conversion_formula>
+    <units>&#x00B0; From N</units>
+  </unit_conversion>
+
+
+  <!-- This area deals mostly with normalizing the units names into xenia standards -->
+  <unit_conversion id="degree_Celsius">
+    <conversion_formula></conversion_formula>
+    <units>&#x00B0;C</units>
+  </unit_conversion>
+
+  <unit_conversion id="degrees Celsius">
+    <conversion_formula></conversion_formula>
+    <units>&#x00B0;C</units>
+  </unit_conversion>
+
+  <unit_conversion id="degree Celsius">
+    <conversion_formula></conversion_formula>
+    <units>&#x00B0;C</units>
+  </unit_conversion>
+
+  <unit_conversion id="celcius">
+    <conversion_formula></conversion_formula>
+    <units>&#x00B0;C</units>
+  </unit_conversion>
+
+  <unit_conversion id="m s-1">
+    <conversion_formula></conversion_formula>
+    <units>m_s-1</units>
+  </unit_conversion>
+
+  <unit_conversion id="cm s-1">
+    <conversion_formula></conversion_formula>
+    <units>cm_s-1</units>
+  </unit_conversion>
+
+  <unit_conversion id="meters">
+    <conversion_formula></conversion_formula>
+    <units>m</units>
+  </unit_conversion>
+
+  <unit_conversion id="meter">
+    <conversion_formula></conversion_formula>
+    <units>m</units>
+  </unit_conversion>
+
+  <unit_conversion id="PSU">
+    <conversion_formula></conversion_formula>
+    <units>psu</units>
+  </unit_conversion>
+
+  <unit_conversion id="hPa">
+    <conversion_formula></conversion_formula>
+    <units>mb</units>
+  </unit_conversion>
+
+  <unit_conversion id="second">
+    <conversion_formula></conversion_formula>
+    <units>s</units>
+  </unit_conversion>
+
+  <unit_conversion id="seconds">
+    <conversion_formula></conversion_formula>
+    <units>s</units>
+  </unit_conversion>
+
+  <unit_conversion id="degrees">
+    <conversion_formula></conversion_formula>
+    <units>&#x00B0; From N</units>
+  </unit_conversion>
+
+  <unit_conversion id="degrees_true">
+    <conversion_formula></conversion_formula>
+    <units>&#x00B0; From N</units>
+  </unit_conversion>
+
+
+
+  <observation id="air_temperature">
+    <displayName>Air Temperature</displayName>
+    <abbreviation>Air Temp</abbreviation>
+  </observation>
+
+  <observation id="wind_from_direction">
+    <displayName>Wind Direction</displayName>
+    <abbreviation>Wind Dir</abbreviation>
+  </observation>
+
+  <observation id="oxygen_concentration">
+    <displayName>0xygen Concentration</displayName>
+    <abbreviation>02 conc.</abbreviation>
+  </observation>
+
+  <observation id="relative_humidity">
+    <displayName>Humidity</displayName>
+    <abbreviation>Humidity</abbreviation>
+  </observation>
+  <observation id="sea_surface_eastward_current">
+    <displayName>Sea Surface Eastward Current</displayName>
+    <abbreviation>Surface Cur E</abbreviation>
+  </observation>
+  <observation id="sea_surface_northward_current">
+    <displayName>Sea Surface Northward Current</displayName>
+    <abbreviation>Surface Cur N</abbreviation>
+  </observation>
+  <observation id="predicted_water_level_in_msl">
+    <displayName>Water Level</displayName>
+    <abbreviation>Water Level</abbreviation>
+  </observation>
+  <observation id="salinity">
+    <displayName>Salinity</displayName>
+    <abbreviation>Salinity</abbreviation>
+  </observation>
+  <observation id="precipitation">
+    <displayName>Precipitation</displayName>
+    <abbreviation>Precip</abbreviation>
+  </observation>
+  <observation id="solar_radiation">
+    <displayName>Solar</displayName>
+    <abbreviation>Solar</abbreviation>
+  </observation>
+  <observation id="eastward_current">
+    <displayName>Eastward Current</displayName>
+    <abbreviation>E. Current</abbreviation>
+  </observation>
+  <observation id="northward_current">
+    <displayName>Northward Current</displayName>
+    <abbreviation>N. Current</abbreviation>
+  </observation>
+  <observation id="precipitation_accumulated_daily">
+    <displayName>Precipitation Accumulated Daily</displayName>
+    <abbreviation>Daily Precip</abbreviation>
+  </observation>
+  <observation id="turbidity">
+    <displayName>Turbidity</displayName>
+    <abbreviation>Turbidity</abbreviation>
+  </observation>
+  <observation id="ph">
+    <displayName>pH</displayName>
+    <abbreviation>pH</abbreviation>
+  </observation>
+  <observation id="visibility">
+    <displayName>Visibility</displayName>
+    <abbreviation>Visibility</abbreviation>
+  </observation>
+  <observation id="precipitation_accumulated_storm">
+    <displayName>Precipitation Accumulated Storm</displayName>
+    <abbreviation>Storm Precip</abbreviation>
+  </observation>
+  <observation id="average_wave_period">
+    <displayName>Average Wave Period</displayName>
+    <abbreviation>Avg Wave Prd</abbreviation>
+  </observation>
+  <observation id="swell_height">
+    <displayName>Swell Wave Height</displayName>
+    <abbreviation>Swell Wave Hgt</abbreviation>
+  </observation>
+  <observation id="swell_period">
+    <displayName>Swell Wave Period</displayName>
+    <abbreviation>Swell Wave Prd</abbreviation>
+  </observation>
+  <observation id="swell_direction">
+    <displayName>Swell Wave Direction</displayName>
+    <abbreviation>Swell Wave Dir</abbreviation>
+  </observation>
+  <observation id="wind_wave_height">
+    <displayName>Wind Wave Height</displayName>
+    <abbreviation>Wind Wave Hgt</abbreviation>
+  </observation>
+  <observation id="wind_wave_period">
+    <displayName>Wind Wave Period</displayName>
+    <abbreviation>Wind Wave Prd</abbreviation>
+  </observation>
+  <observation id="wind_wave_direction">
+    <displayName>Wind Wave Direction</displayName>
+    <abbreviation>Wind Wave Dir</abbreviation>
+  </observation>
+  <observation id="swell_wave_direction">
+    <displayName>Swell Wave Direction</displayName>
+    <abbreviation>Swell Wave Dir</abbreviation>
+  </observation>
+  <observation id="mean_wave_direction">
+    <displayName>Mean Wave Direction</displayName>
+    <abbreviation>Mean Wave Dir</abbreviation>
+  </observation>
+  <observation id="mean_wave_direction_peak_period">
+    <displayName>Mean Wave Direction Peak Period</displayName>
+    <abbreviation>Mean Wave Dir PP</abbreviation>
+  </observation>
+  <observation id="gage_height">
+    <displayName>Gage Height</displayName>
+    <abbreviation>Gage Hgt</abbreviation>
+  </observation>
+  <observation id="depth">
+    <displayName>Depth</displayName>
+    <abbreviation>Depth</abbreviation>
+  </observation>
+  <observation id="discharge">
+    <displayName>Discharge</displayName>
+    <abbreviation>Discharge</abbreviation>
+  </observation>
+  <observation id="stream_velocity">
+    <displayName>Stream Velocity</displayName>
+    <abbreviation>Stream Vlcty</abbreviation>
+  </observation>
+  <observation id="wind_speed">
+    <displayName>Wind Speed</displayName>
+    <abbreviation>Wind Speed</abbreviation>
+  </observation>
+  <observation id="wind_gust">
+    <displayName>Wind Gust</displayName>
+    <abbreviation>Wind Gust</abbreviation>
+  </observation>
+  <observation id="air_pressure">
+    <displayName>Air Pressure</displayName>
+    <abbreviation>Air Pres</abbreviation>
+  </observation>
+  <observation id="water_temperature">
+    <displayName>Water Temperature</displayName>
+    <abbreviation>Water Temp</abbreviation>
+  </observation>
+  <observation id="water_conductivity">
+    <displayName>Water Conductivity</displayName>
+    <abbreviation>Water Cond</abbreviation>
+  </observation>
+  <observation id="water_pressure">
+    <displayName>Water Pressure</displayName>
+    <abbreviation>Water Pres</abbreviation>
+  </observation>
+  <observation id="current_speed">
+    <displayName>Current Speed</displayName>
+    <abbreviation>Current Spd</abbreviation>
+  </observation>
+  <observation id="current_to_direction">
+    <displayName>Current To Direction</displayName>
+    <abbreviation>Current To Dir</abbreviation>
+  </observation>
+  <observation id="significant_wave_height">
+    <displayName>Significant Wave Height</displayName>
+    <abbreviation>Sgn Wave Hgt</abbreviation>
+  </observation>
+  <observation id="dominant_wave_period">
+    <displayName>Dominant Wave Period</displayName>
+    <abbreviation>Dom Wave Prd</abbreviation>
+  </observation>
+  <observation id="significant_wave_to_direction">
+    <displayName>Significant Wave Direction</displayName>
+    <abbreviation>Sgn Wave Dir</abbreviation>
+  </observation>
+  <observation id="wave_from_direction">
+    <displayName>Wave From Direction</displayName>
+    <abbreviation>Wave Dir</abbreviation>
+  </observation>
+  <observation id="oxygen_saturation">
+    <displayName>Oxygen Saturation</displayName>
+    <abbreviation>02 Saturation</abbreviation>
+  </observation>
+  <observation id="water_level_in_mllw">
+    <displayName>Water Level</displayName>
+    <abbreviation>Water Level</abbreviation>
+  </observation>
+  <observation id="water_level_in_msl">
+    <displayName>Water Level</displayName>
+    <abbreviation>Water Level</abbreviation>
+  </observation>
+  <observation id="water_level">
+    <displayName>Water Level</displayName>
+    <abbreviation>Water Level</abbreviation>
+  </observation>
+  <observation id="chlorophyll">
+    <displayName>Chlorophyll</displayName>
+    <abbreviation>Chl</abbreviation>
+  </observation>
+  <observation id="surface_chlorophyll">
+    <displayName>Surface Chlorophyll</displayName>
+    <abbreviation>Chl</abbreviation>
+  </observation>
+  <observation id="bottom_chlorophyll">
+    <displayName>Bottom Chlorophyll</displayName>
+    <abbreviation>Chl</abbreviation>
+  </observation>
+
+  <observation id="chl_concentration">
+    <displayName>Chlorophyll</displayName>
+    <abbreviation>Chl</abbreviation>
+  </observation>
+  <observation id="nitrate">
+    <displayName>Nitrate</displayName>
+    <abbreviation>Nitrate</abbreviation>
+  </observation>
+  <observation id="cdom">
+    <displayName>CDOM</displayName>
+    <abbreviation>CDOM</abbreviation>
+  </observation>
+  <observation id="blue_green_algae">
+    <displayName>BGA</displayName>
+    <abbreviation>BGA</abbreviation>
+  </observation>
+  <observation id="photosynthetic_active_radiation">
+    <displayName>PAR</displayName>
+    <abbreviation>PAR</abbreviation>
+  </observation>
+
+
+
+  <unit id="degree">
+    <xenia_unit>degrees_true</xenia_unit>
+  </unit>
+
+  <unit id="mS/cm">
+    <xenia_unit>mS_cm-1</xenia_unit>
+  </unit>
+
+  <unit id="c">
+    <xenia_unit>celsius</xenia_unit>
+  </unit>
+
+  <unit id="m/s">
+    <xenia_unit>m_s-1</xenia_unit>
+  </unit>
+
+  <unit id="cm/s">
+    <xenia_unit>cm_s-1</xenia_unit>
+  </unit>
+
+  <unit id="hpa">
+    <xenia_unit>mb</xenia_unit>
+  </unit>
+
+  <unit id="ms/cm">
+    <xenia_unit>mS_cm-1</xenia_unit>
+  </unit>
+
+
+</unit_conversion_list>
