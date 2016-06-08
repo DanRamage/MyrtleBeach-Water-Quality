@@ -288,6 +288,6 @@ def main():
                      xenia_db)
 
   if logger:
-    logger.error("Log closed.")
+    logger.info("Log closed.")
 if __name__ == "__main__":
   main()
