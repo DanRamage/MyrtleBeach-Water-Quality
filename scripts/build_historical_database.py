@@ -287,6 +287,7 @@ def main():
                      units_conversion,
                      xenia_db)
 
-
+  if logger:
+    logger.error("Log closed.")
 if __name__ == "__main__":
   main()
