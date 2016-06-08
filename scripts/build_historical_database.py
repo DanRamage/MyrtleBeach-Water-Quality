@@ -69,6 +69,11 @@ pier_obs_to_xenia = {
     "xenia_name": "chl_concentration",
     "xenia_units": "ug_L-1"
   },
+  "Turbidity": {
+    "units": "ntu",
+    "xenia_name": "turbidity",
+    "xenia_units": "ntu"
+  },
   "Turbidity+": {
     "units": "ntu",
     "xenia_name": "turbidity",
