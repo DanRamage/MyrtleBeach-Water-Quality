@@ -138,7 +138,8 @@ def process_pier_files(platform_name,
                        start_data_row,
                        header_row,
                        units_convereter,
-                       xenia_db):
+                       xenia_db,
+                       utc_start_date):
   logger = logging.getLogger(__name__)
   obs_keys = pier_obs_to_xenia.keys()
   header_list = header_row.split(",")
@@ -151,12 +152,23 @@ def process_pier_files(platform_name,
     checked_platform_exists = False
     date_ndx = header_list.index('Date')
     time_ndx = header_list.index('Time')
-
     platform_meta = None
     if platform_name in platform_metadata:
       platform_meta = platform_metadata[platform_name]
     for row in csv_reader:
       if line_num >= start_data_row:
+        date = row[date_ndx]
+        #date format is incosistent, sometimes leadings zeros, other times not.
+        month, day, year = date.split('/')
+        time = row[time_ndx]
+        hour, minute = time.split(':')
+        obs_date = eastern_tz.localize(datetime(year=int(year), month=int(month), day=int(day),
+                         hour=int(hour), minute=int(minute), second=0))
+        utc_obs_date = obs_date.astimezone(utc_tz)
+
+        if utc_start_date is not None and utc_obs_date < utc_start_date:
+          continue
+
         if not checked_platform_exists:
           if xenia_db.platformExists(platform_name) == -1:
             checked_platform_exists = True
@@ -208,14 +220,6 @@ def process_pier_files(platform_name,
                   s_order = 2
                 found_obs.append(obs_key)
 
-              date = row[date_ndx]
-              #date format is incosistent, sometimes leadings zeros, other times not.
-              month, day, year = date.split('/')
-              time = row[time_ndx]
-              hour, minute = time.split(':')
-              obs_date = eastern_tz.localize(datetime(year=int(year), month=int(month), day=int(day),
-                               hour=int(hour), minute=int(minute), second=0))
-              utc_obs_date = obs_date.astimezone(utc_tz)
               if len(row[ndx]):
                 obs_info = pier_obs_to_xenia[obs_key]
                 obs_val = float(row[ndx])
@@ -258,6 +262,8 @@ def main():
                     help="" )
   parser.add_option("-p", "--PlatformName", dest="platform_name",
                     help="" )
+  parser.add_option("-s", "--StartDate", dest="start_date", default=None,
+                    help="" )
 
   (options, args) = parser.parse_args()
 
@@ -280,14 +286,19 @@ def main():
     if logger:
       logger.exception(e)
 
+  utc_start_date = None
+  if options.start_date is not None:
+    utc_start_date = timezone('US/Eastern').localize(datetime.strptime(options.start_date, '%Y-%m-%d %H:%M:%S')).astimezone(timezone('UTC'))
   process_pier_files(options.platform_name,
                      options.data_file,
                      int(options.first_data_row),
                      options.header_row,
                      units_conversion,
-                     xenia_db)
+                     xenia_db,
+                     utc_start_date)
 
   if logger:
     logger.info("Log closed.")
 if __name__ == "__main__":
   main()
+
