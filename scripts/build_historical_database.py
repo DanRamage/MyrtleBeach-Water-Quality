@@ -237,7 +237,7 @@ def process_pier_files(platform_name,
               break
           if matched_obs is None:
             if header_key != 'Date' and header_key != 'Time':
-              logger.error("Could not match obs.")
+              logger.error("Could not match obs: %s" % (header_key))
               sys.exit(-1)
       line_num += 1
   return
