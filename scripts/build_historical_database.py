@@ -29,6 +29,11 @@ platform_metadata = {
       'latitude':  33.827676,
       'longitude': -78.632021
     },
+  'carocoops.SUN2.buoy':
+    {
+      'latitude':  33.8373,
+      'longitude': -78.4768
+    }
 
 
 }
@@ -133,6 +138,31 @@ pier_obs_to_xenia = {
 }
 pier_met_sensors = ["Air Temp","BP","RH","Wind Dir","Wind Speed","Rainfall","Air Temp","Barometric Pressure","Relative Humidity","Wind Direction" ]
 
+sun2_to_xenia = {
+  "fcat_salinity": {
+    "units": "psu",
+    "xenia_name": "salinity",
+    "xenia_units": "psu"
+
+  },
+  "fcat_temp": {
+    "units": "celsius",
+    "xenia_name": "water_temperature",
+    "xenia_units": "celsius"
+  },
+  "ws": {
+    "units": "m_s-1",
+    "xenia_name": "wind_speed",
+    "xenia_units": "m_s-1"
+
+  },
+  "wd": {
+    "units": "degrees_true",
+    "xenia_name": "wind_from_direction",
+    "xenia_units": "degrees_true"
+
+  }
+}
 def process_pier_files(platform_name,
                       file_name,
                        start_data_row,
@@ -250,11 +280,116 @@ def process_pier_files(platform_name,
               sys.exit(-1)
       line_num += 1
   return
+
+def process_sun2_files(platform_name,
+                       file_name,
+                       start_data_row,
+                       header_row,
+                       units_converter,
+                       xenia_db,
+                       utc_start_date):
+
+  logger = logging.getLogger(__name__)
+  obs_keys = sun2_to_xenia.keys()
+  header_list = header_row.split(",")
+  row_entry_date = datetime.now()
+  utc_tz = timezone('UTC')
+  with open(file_name, "rU") as data_file:
+    csv_reader = csv.reader(data_file)
+    line_num = 0
+    checked_platform_exists = False
+    try:
+      date_time_ndx = header_list.index('datetime')
+    except ValueError as e:
+      date_time_ndx = header_list.index('measurement_date')
+
+    platform_meta = None
+    if platform_name in platform_metadata:
+      platform_meta = platform_metadata[platform_name]
+    for row in csv_reader:
+      if line_num >= start_data_row:
+        date_val = row[date_time_ndx]
+
+        utc_obs_date = utc_tz.localize(datetime.strptime(row[date_time_ndx], '%Y-%m-%d %H:%M:%S'))
+
+        if utc_start_date is not None and utc_obs_date.date() < utc_start_date.date():
+          continue
+
+        if not checked_platform_exists:
+          checked_platform_exists = True
+          obs_list = []
+          for ndx, header_key in enumerate(header_list):
+            header_key = header_key.lower().strip()
+            logger.debug("Trying to match obs: %s to row" % (header_key))
+            matched_obs = None
+            s_order = 1
+            add_sensors = False
+            for obs_key in obs_keys:
+              if header_key.find(obs_key.lower().strip()) != -1:
+                matched_obs = obs_key
+
+              if matched_obs is not None:
+                obs_info = sun2_to_xenia[matched_obs]
+                if xenia_db.sensorExists(obs_info['xenia_name'],
+                                         obs_info['xenia_units'],
+                                         platform_name,
+                                         s_order) == -1:
+                  add_sensors = True
+                  logger.debug("Matched row obs: %s to obs: %s to row" % (header_key, obs_info['xenia_name']))
+                  obs_list.append({'obs_name': obs_info['xenia_name'],
+                                   'uom_name': obs_info['xenia_units'],
+                                   's_order': s_order})
+                break
+          if xenia_db.platformExists(platform_name) == -1 or add_sensors:
+            xenia_db.buildMinimalPlatform(platform_name, obs_list)
+
+        for ndx, header_key in enumerate(header_list):
+          matched_obs = None
+          clean_hdr_key = header_key.lower().strip()
+          s_order = 1
+          for obs_key in obs_keys:
+            if clean_hdr_key.find(obs_key.lower().strip()) != -1:
+              matched_obs = obs_key
+              break
+
+          if matched_obs is not None:
+            if len(row[ndx]):
+              obs_info = sun2_to_xenia[obs_key]
+              obs_val = float(row[ndx])
+              if obs_info['units'] != obs_info['xenia_units']:
+                obs_val = units_converter.measurementConvert(obs_val, obs_info['units'], obs_info['xenia_units'])
+                if obs_val is None:
+                  obs_val
+              logger.debug("Row: %d Adding obs: %s(%s) Date: %s Value: %s S_Order: %d" %\
+                           (line_num, obs_info['xenia_name'], obs_info['xenia_units'], utc_obs_date.strftime("%Y-%m-%d %H:%M:%S"), obs_val, s_order))
+              try:
+                xenia_db.addMeasurement(obs_info['xenia_name'],
+                                        obs_info['xenia_units'],
+                                        platform_name,
+                                        utc_obs_date,
+                                        platform_meta['latitude'],
+                                        platform_meta['longitude'],
+                                        0,
+                                        [obs_val],
+                                        sOrder=s_order,
+                                        autoCommit=True,
+                                        rowEntryDate=row_entry_date )
+              except Exception as e:
+                logger.exception(e)
+
+        if matched_obs is None:
+          if header_key != 'Date' and header_key != 'Time':
+            logger.error("Could not match obs: %s" % (header_key))
+            sys.exit(-1)
+      line_num += 1
+
 def main():
   parser = optparse.OptionParser()
   parser.add_option("-c", "--ConfigFile", dest="config_file",
                     help="INI Configuration file." )
-  parser.add_option("-f", "--DataFile", dest="data_file",
+  parser.add_option("-f", "--PierDataFile", dest="pier_data_file", default=None,
+                    help="" )
+  parser.add_option("-u", "--SUN2DataFile", dest="sun2_data_file", default=None,
                     help="" )
   parser.add_option("-a", "--Header", dest="header_row",
                     help="" )
@@ -289,14 +424,22 @@ def main():
   utc_start_date = None
   if options.start_date is not None:
     utc_start_date = timezone('US/Eastern').localize(datetime.strptime(options.start_date, '%Y-%m-%d %H:%M:%S')).astimezone(timezone('UTC'))
-  process_pier_files(options.platform_name,
-                     options.data_file,
-                     int(options.first_data_row),
-                     options.header_row,
-                     units_conversion,
-                     xenia_db,
-                     utc_start_date)
-
+  if options.pier_data_file is not None:
+    process_pier_files(options.platform_name,
+                       options.pier_data_file,
+                       int(options.first_data_row),
+                       options.header_row,
+                       units_conversion,
+                       xenia_db,
+                       utc_start_date)
+  elif options.sun2_data_file is not None:
+    process_sun2_files(options.platform_name,
+                       options.sun2_data_file,
+                       int(options.first_data_row),
+                       options.header_row,
+                       units_conversion,
+                       xenia_db,
+                       utc_start_date)
   if logger:
     logger.info("Log closed.")
 if __name__ == "__main__":
