@@ -60,7 +60,11 @@ def query_sample_data(data_dict, year, url, schema_url, sample_sites):
                 data_dict[data['station']] = {'results': []}
 
               date_parts = beachTable.SamplingDate[0].split('T')
-              data['date'] = date_parts[0]
+              time_parts = date_parts[1].split('-')
+
+              date_rec = datetime.strptime("%s %s" % (date_parts[0], time_parts[0]), '%Y-%m-%d %H:%M:%S')
+              #date_parts = beachTable.SamplingDate[0].split('T')
+              data['date'] = date_rec.strftime('%Y-%m-%d %H:%M:%S')
               data['value'] = beachTable.ETCOC[0]
               data_dict[data['station']]['results'].append(data)
   except Exception, e:
