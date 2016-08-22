@@ -1,7 +1,8 @@
 [Core]
 Name = Myrtle Beach Prediction Plugin
 Module = mb_prediction_plugin
-Ini=/Users/danramage/Documents/workspace/WaterQuality/MyrtleBeach-Water-Quality/config/mb_prediction_config_debug.ini
+Ini=/home/xeniaprod/scripts/MyrtleBeach-Water-Quality/config/mb_prediction_config.ini
+
 
 [Documentation]
 Author = Dan Ramage
