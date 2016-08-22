@@ -756,7 +756,7 @@ class mb_wq_model_data(wq_data):
 
   def reset(self, **kwargs):
     self.site = kwargs['site']
-    self.tide_station = kwargs['tide_stations']
+    self.tide_station = kwargs['tide_station']
 
   """
   Function: initialize_return_data
