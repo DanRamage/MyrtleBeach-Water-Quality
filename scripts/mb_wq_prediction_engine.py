@@ -18,7 +18,7 @@ from wq_prediction_tests import wqEquations
 from enterococcus_wq_test import EnterococcusPredictionTest,EnterococcusPredictionTestEx
 
 from mb_wq_data import mb_wq_model_data, mb_sample_sites
-from wq_results import _resolve, results_exporter
+from output_plugin import output_plugin
 '''
 Function: build_test_objects
 Purpose: Builds the models used for doing the predictions.
