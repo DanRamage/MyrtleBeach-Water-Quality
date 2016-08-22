@@ -121,7 +121,7 @@ class mb_wq_historical_data(wq_data):
   """
   def __init__(self, **kwargs):
     wq_data.__init__(self, **kwargs)
-    self.logger = logging.getLogger(type(self).__name__)
+    self.logger = logging.getLogger(__name__)
 
     self.site = None
     #The main station we retrieve the values from.
@@ -131,7 +131,7 @@ class mb_wq_historical_data(wq_data):
     self.tide_data_obj = None
 
     self.logger.debug("Connection to nexrad xenia db: %s" % (kwargs['xenia_nexrad_database_name']))
-    self.nexrad_db = wqDB(kwargs['xenia_nexrad_database_name'], type(self).__name__)
+    self.nexrad_db = wqDB(kwargs['xenia_nexrad_database_name'], __name__)
 
     if self.logger:
       self.logger.debug("Connection to xenia db: %s" % (kwargs['xenia_database_name']))
@@ -718,20 +718,23 @@ class mb_wq_historical_data(wq_data):
 
       return
 
-class mb_wq_model_data(mb_wq_historical_data):
+class mb_wq_model_data(wq_data):
   def __init__(self, **kwargs):
-    mb_wq_historical_data.__init__(self, **kwargs)
+    wq_data.__init__(self, **kwargs)
 
-    #self.logger = logging.getLogger(type(self).__name__)
+    self.logger = logging.getLogger(type(self).__name__)
+
+    #List of platforms that we query same obs types from
+    self.platforms = ['carocoops.SUN2.buoy', 'lbhmc.2ndAveNorth.pier', 'lbhmc.CherryGrove.pier', 'lbhmc.Apache.pier']
 
     self.site = None
     #The main station we retrieve the values from.
     self.tide_station =  None
     self.query_tide_data = True
+    self.tide_data_obj = None
 
-
-    self.logger.debug("Connection to xenia db: %s" % (kwargs['xenia_database_name']))
-    self.xenia_db = wqDB(kwargs['xenia_database_name'], type(self).__name__)
+    self.logger.debug("Connection to xenia wq db: %s" % (kwargs['xenia_wq_db_name']))
+    self.xenia_wq_db = wqDB(kwargs['xenia_wq_db_name'], type(self).__name__)
 
     try:
       #Connect to the xenia database we use for observations aggregation.
@@ -747,11 +750,12 @@ class mb_wq_model_data(mb_wq_historical_data):
       raise
 
   def __del__(self):
-    mb_wq_historical_data.__del__(self)
     if self.logger:
       self.logger.debug("Disconnecting xenia obs database.")
     self.xenia_obs_db.disconnect()
 
+  def reset(self, **kwargs):
+    self.site = kwargs['site']
 
   """
   Function: initialize_return_data
@@ -911,26 +915,90 @@ class mb_wq_model_data(mb_wq_historical_data):
               #Vector with speed as constant(1), and direction.
               direction_tuples.append((1, wind_dir_row.m_value))
               break
-
-        avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
-        self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+        if len(wind_dir_tuples):
+          avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
+          self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
                                                                                             avg_speed_dir_components[0],
                                                                                             avg_speed_dir_components[0] * meters_per_second_to_mph,
                                                                                             avg_speed_dir_components[1]))
 
-        #Unity components, just direction with speeds all 1.
-        avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
-        scalar_speed_avg = scalar_speed_avg / speed_count
-        wq_tests_data['nos8661070_wind_spd'] = scalar_speed_avg * meters_per_second_to_mph
-        wq_tests_data['nos8661070_wind_dir_val'] = avg_dir_components[1]
-        self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
-                                                                                                   scalar_speed_avg,
-                                                                                                   scalar_speed_avg * meters_per_second_to_mph,
-                                                                                                   avg_dir_components[1]))
+          #Unity components, just direction with speeds all 1.
+          avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
+          scalar_speed_avg = scalar_speed_avg / speed_count
+          wq_tests_data['nos8661070_wind_spd'] = scalar_speed_avg * meters_per_second_to_mph
+          wq_tests_data['nos8661070_wind_dir_val'] = avg_dir_components[1]
+          self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                                     scalar_speed_avg,
+                                                                                                     scalar_speed_avg * meters_per_second_to_mph,
+                                                                                                     avg_dir_components[1]))
+        else:
+          self.logger.error("Platform: %s no wind speed or direction data available" % (platform_handle))
 
       self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
       return
+  def get_nexrad_data(self, start_date, wq_tests_data):
+    if self.logger:
+      self.logger.debug("Start retrieving nexrad data datetime: %s" % (start_date.strftime('%Y-%m-%d %H:%M:%S')))
+
+    #Collect the radar data for the boundaries.
+    for boundary in self.site.contained_by:
+      clean_var_bndry_name = boundary.name.lower().replace(' ', '_')
+
+      platform_handle = 'nws.%s.radarcoverage' % (boundary.name)
+      if self.logger:
+        self.logger.debug("Start retrieving nexrad platfrom: %s" % (platform_handle))
+      # Get the radar data for previous 8 days in 24 hour intervals
+      for prev_hours in range(24, 192, 24):
+        var_name = '%s_nexrad_summary_%d' % (clean_var_bndry_name, prev_hours)
+        radar_val = self.xenia_wq_db.getLastNHoursSummaryFromRadarPrecip(platform_handle,
+                                                                    start_date,
+                                                                    prev_hours,
+                                                                    'precipitation_radar_weighted_average',
+                                                                    'mm')
+        if radar_val != None:
+          #Convert mm to inches
+          wq_tests_data[var_name] = radar_val * 0.0393701
+        else:
+          if self.logger:
+            self.logger.error("No data available for boundary: %s Date: %s. Error: %s" %(var_name, start_date, self.xenia_wq_db.getErrorInfo()))
+
+      #calculate the X day delay totals
+      if wq_tests_data['%s_nexrad_summary_48' % (clean_var_bndry_name)] != wq_defines.NO_DATA and\
+         wq_tests_data['%s_nexrad_summary_24' % (clean_var_bndry_name)] != wq_defines.NO_DATA:
+        wq_tests_data['%s_nexrad_total_1_day_delay' % (clean_var_bndry_name)] = wq_tests_data['%s_nexrad_summary_48' % (clean_var_bndry_name)] - wq_tests_data['%s_nexrad_summary_24' % (clean_var_bndry_name)]
+
+      if wq_tests_data['%s_nexrad_summary_72' % (clean_var_bndry_name)] != wq_defines.NO_DATA and\
+         wq_tests_data['%s_nexrad_summary_48' % (clean_var_bndry_name)] != wq_defines.NO_DATA:
+        wq_tests_data['%s_nexrad_total_2_day_delay' % (clean_var_bndry_name)] = wq_tests_data['%s_nexrad_summary_72' % (clean_var_bndry_name)] - wq_tests_data['%s_nexrad_summary_48' % (clean_var_bndry_name)]
+
+      if wq_tests_data['%s_nexrad_summary_96' % (clean_var_bndry_name)] != wq_defines.NO_DATA and\
+         wq_tests_data['%s_nexrad_summary_72' % (clean_var_bndry_name)] != wq_defines.NO_DATA:
+        wq_tests_data['%s_nexrad_total_3_day_delay' % (clean_var_bndry_name)] = wq_tests_data['%s_nexrad_summary_96' % (clean_var_bndry_name)] - wq_tests_data['%s_nexrad_summary_72' % (clean_var_bndry_name)]
+
+      prev_dry_days = self.xenia_wq_db.getPrecedingRadarDryDaysCount(platform_handle,
+                                             start_date,
+                                             'precipitation_radar_weighted_average',
+                                             'mm')
+      if prev_dry_days is not None:
+        var_name = '%s_nexrad_dry_days_count' % (clean_var_bndry_name)
+        wq_tests_data[var_name] = prev_dry_days
+
+      rainfall_intensity = self.xenia_wq_db.calcRadarRainfallIntensity(platform_handle,
+                                                               start_date,
+                                                               60,
+                                                              'precipitation_radar_weighted_average',
+                                                              'mm')
+      if rainfall_intensity is not None:
+        var_name = '%s_nexrad_rainfall_intensity' % (clean_var_bndry_name)
+        wq_tests_data[var_name] = rainfall_intensity
+
+
+      if self.logger:
+        self.logger.debug("Finished retrieving nexrad platfrom: %s" % (platform_handle))
+
+    if self.logger:
+      self.logger.debug("Finished retrieving nexrad data datetime: %s" % (start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
   def get_sun2_data(self, start_date, wq_tests_data):
       platform_handle = 'carocoops.SUN2.buoy'
