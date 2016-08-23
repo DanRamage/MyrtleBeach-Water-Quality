@@ -103,7 +103,11 @@
                               </td>
                               <td>
                                 % for key in test_obj.data_used:
-                                    ${key}: ${test_obj.data_used[key]}
+                                    % if test_obj.data_used[key] != -9999:
+                                      ${key}: ${test_obj.data_used[key]}
+                                    % else:
+                                      ${key}: Data not available
+                                    % endif
                                     </br>
                                 % endfor
                               </td>
