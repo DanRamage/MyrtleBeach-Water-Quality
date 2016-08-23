@@ -1054,11 +1054,16 @@ class mb_wq_model_data(wq_data):
       else:
         if len(salinity_data):
           wq_tests_data['sun2_salinity'] = sum(sal.m_value for sal in salinity_data) / len(salinity_data)
-        self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_salinity'], len(salinity_data)))
+          self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_salinity'], len(salinity_data)))
+        else:
+          self.logger.error("Platform: %s returned no salinity records." % (platform_handle))
+
 
         if len(water_temp_data):
           wq_tests_data['sun2_water_temp'] = sum(temp.m_value for temp in water_temp_data) / len(water_temp_data)
-        self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_water_temp'], len(water_temp_data)))
+          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_water_temp'], len(water_temp_data)))
+        else:
+          self.logger.error("Platform: %s returned no water_temperature records." % (platform_handle))
 
         wind_dir_tuples = []
         direction_tuples = []
@@ -1078,21 +1083,24 @@ class mb_wq_model_data(wq_data):
               direction_tuples.append((1, wind_dir_row.m_value))
               break
 
-        avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
-        self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
-                                                                                          avg_speed_dir_components[0],
-                                                                                          avg_speed_dir_components[0] * meters_per_second_to_mph,
-                                                                                          avg_speed_dir_components[1]))
+        if len(wind_dir_tuples):
+          avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
+          self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                            avg_speed_dir_components[0],
+                                                                                            avg_speed_dir_components[0] * meters_per_second_to_mph,
+                                                                                            avg_speed_dir_components[1]))
 
-        #Unity components, just direction with speeds all 1.
-        avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
-        scalar_speed_avg = scalar_speed_avg / speed_count
-        wq_tests_data['sun2_wind_speed'] = scalar_speed_avg * meters_per_second_to_mph
-        wq_tests_data['sun2_wind_dir_val'] = avg_dir_components[1]
-        self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
-                                                                                                 scalar_speed_avg,
-                                                                                                 scalar_speed_avg * meters_per_second_to_mph,
-                                                                                                 avg_dir_components[1]))
+          #Unity components, just direction with speeds all 1.
+          avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
+          scalar_speed_avg = scalar_speed_avg / speed_count
+          wq_tests_data['sun2_wind_speed'] = scalar_speed_avg * meters_per_second_to_mph
+          wq_tests_data['sun2_wind_dir_val'] = avg_dir_components[1]
+          self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                                   scalar_speed_avg,
+                                                                                                   scalar_speed_avg * meters_per_second_to_mph,
+                                                                                                   avg_dir_components[1]))
+        else:
+          self.logger.error("Platform: %s returned no wind speed/direction data." % (platform_handle))
 
       self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
