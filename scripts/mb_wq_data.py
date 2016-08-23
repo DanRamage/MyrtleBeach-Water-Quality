@@ -893,11 +893,15 @@ class mb_wq_model_data(wq_data):
 
         if len(water_temp_data):
           wq_tests_data['nos8661070_water_temp'] = sum(rec.m_value for rec in water_temp_data) / len(water_temp_data)
-        self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_temp'], len(water_temp_data)))
+          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_temp'], len(water_temp_data)))
+        else:
+          self.logger.error("Platform: %s returned no water_temperature records." % (platform_handle))
 
         if len(water_level_data):
           wq_tests_data['nos8661070_water_level'] = sum(rec.m_value for rec in water_level_data) / len(water_level_data)
-        self.logger.debug("Platform: %s Avg Water Level: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_level'], len(water_level_data)))
+          self.logger.debug("Platform: %s Avg Water Level: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_level'], len(water_level_data)))
+        else:
+          self.logger.error("Platform: %s returned no water_level records." % (platform_handle))
 
         wind_dir_tuples = []
         direction_tuples = []
