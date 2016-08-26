@@ -19,6 +19,8 @@ from enterococcus_wq_test import EnterococcusPredictionTest,EnterococcusPredicti
 
 from mb_wq_data import mb_wq_model_data, mb_sample_sites
 from output_plugin import output_plugin
+from wq_prediction_engine import wq_prediction_engine
+
 '''
 Function: build_test_objects
 Purpose: Builds the models used for doing the predictions.
@@ -281,6 +283,150 @@ def output_results(**kwargs):
     logger.debug("Finished output_results")
   return
 """
+
+class mb_prediction_engine(wq_prediction_engine):
+  def __init__(self):
+    self.logger = logging.getLogger(type(self).__name__)
+
+  def build_test_objects(self, **kwargs):
+    config_file = kwargs['config_file']
+    site_name = kwargs['site_name']
+
+    model_list = []
+    #Get the sites test configuration ini, then build the test objects.
+    try:
+      test_config_file = config_file.get(site_name, 'prediction_config')
+      entero_lo_limit = config_file.getint('entero_limits', 'limit_lo')
+      entero_hi_limit = config_file.getint('entero_limits', 'limit_hi')
+    except ConfigParser.Error, e:
+        self.logger.exception(e)
+    else:
+      self.logger.debug("Site: %s Model Config File: %s" % (site_name, test_config_file))
+
+      model_config_file = ConfigParser.RawConfigParser()
+      model_config_file.read(test_config_file)
+      #Get the number of prediction models we use for the site.
+      model_count = model_config_file.getint("settings", "model_count")
+      self.logger.debug("Site: %s Model count: %d" % (site_name, model_count))
+
+      for cnt in range(model_count):
+        model_name = model_config_file.get("model_%d" % (cnt+1), "name")
+        model_equation = model_config_file.get("model_%d" % (cnt+1), "formula")
+        self.logger.debug("Site: %s Model name: %s equation: %s" % (site_name, model_name, model_equation))
+
+        test_obj = EnterococcusPredictionTestEx(model_equation, site_name, model_name)
+        test_obj.set_category_limits(entero_lo_limit, entero_hi_limit)
+        model_list.append(test_obj)
+
+    return model_list
+
+  def run_wq_models(self, **kwargs):
+    prediction_testrun_date = datetime.now()
+
+    try:
+      config_file = ConfigParser.RawConfigParser()
+      config_file.read(kwargs['config_file_name'])
+
+      boundaries_location_file = config_file.get('boundaries_settings', 'boundaries_file')
+      sites_location_file = config_file.get('boundaries_settings', 'sample_sites')
+      xenia_wq_db_file = config_file.get('database', 'name')
+
+      #MOve xenia obs db settings into standalone ini. We can then
+      #check the main ini file into source control without exposing login info.
+      db_settings_ini = config_file.get('password_protected_configs', 'settings_ini')
+      xenia_obs_db_config_file = ConfigParser.RawConfigParser()
+      xenia_obs_db_config_file.read(db_settings_ini)
+
+      xenia_obs_db_host = xenia_obs_db_config_file.get('xenia_observation_database', 'host')
+      xenia_obs_db_user = xenia_obs_db_config_file.get('xenia_observation_database', 'user')
+      xenia_obs_db_password = xenia_obs_db_config_file.get('xenia_observation_database', 'password')
+      xenia_obs_db_name = xenia_obs_db_config_file.get('xenia_observation_database', 'database')
+
+      #output results config file. Again split out into individual ini file
+      #for security.
+      output_settings_ini = config_file.get('password_protected_configs', 'settings_ini')
+
+      output_plugin_dirs=config_file.get('output_plugins', 'plugin_directories').split(',')
+    except ConfigParser.Error, e:
+      self.logger.exception(e)
+    else:
+      #Load the sample site information. Has name, location and the boundaries that contain the site.
+      mb_sites = mb_sample_sites()
+      mb_sites.load_sites(file_name=sites_location_file, boundary_file=boundaries_location_file)
+      #Retrieve the data needed for the models.
+
+      mb_wq_data = mb_wq_model_data(xenia_wq_db_name=xenia_wq_db_file,
+                                    xenia_obs_db_type='postgres',
+                                    xenia_obs_db_host=xenia_obs_db_host,
+                                    xenia_obs_db_user=xenia_obs_db_user,
+                                    xenia_obs_db_password=xenia_obs_db_password,
+                                    xenia_obs_db_name=xenia_obs_db_name
+                                    )
+
+      site_model_ensemble = []
+      #First pass we want to get all the data, after that we only need to query
+      #the site specific pieces.
+      reset_site_specific_data_only = False
+      site_data = OrderedDict()
+      total_time = 0
+      for site in mb_sites:
+        try:
+          #Get all the models used for the particular sample site.
+          model_list = self.build_test_objects(config_file=config_file, site_name=site.name)
+          #Create the container for all the models.
+          site_equations = wqEquations(site.name, model_list, True)
+
+          #Get the station specific tide stations
+          tide_station = config_file.get(site.name, 'tide_station')
+          #We use the virtual tide sites as there no stations near the sites.
+        except ConfigParser.Error, e:
+          self.logger.exception(e)
+        else:
+          mb_wq_data.reset(site=site,
+                            tide_station=tide_station
+                            )
+
+          site_data['station_name'] = site.name
+          try:
+            mb_wq_data.query_data(kwargs['begin_date'], kwargs['begin_date'], site_data, reset_site_specific_data_only)
+            reset_site_specific_data_only = True
+            site_equations.runTests(site_data)
+            total_test_time = sum(testObj.test_time for testObj in site_equations.tests)
+            self.logger.debug("Site: %s total time to execute models: %f ms" % (site.name, total_test_time * 1000))
+            total_time += total_test_time
+
+            """
+            #Calculate some statistics on the entero results. This is making an assumption
+            #that all the tests we are running are calculating the same value, the entero
+            #amount.
+            entero_stats = None
+            if len(site_equations.tests):
+              entero_stats = stats()
+              for test in site_equations.tests:
+                if test.mlrResult is not None:
+                  entero_stats.addValue(test.mlrResult)
+              entero_stats.doCalculations()
+            #Check to see if there is a entero sample for our date as long as the date
+            #is not the current date.
+            entero_value = None
+            if datetime.now().date() != kwargs['begin_date'].date():
+              entero_value = check_site_date_for_sampling_date(site.name, kwargs['begin_date'], output_settings_ini, kwargs['use_logging'])
+            """
+
+            site_model_ensemble.append({'metadata': site,
+                                        'models': site_equations,
+                                        'entero_value': None})
+          except Exception,e:
+            self.logger.exception(e)
+
+      self.logger.debug("Total time to execute all sites models: %f ms" % (total_time * 1000))
+
+      self.run_output_plugins(output_plugin_directories=output_plugin_dirs,
+                          site_model_ensemble=site_model_ensemble,
+                           prediction_date=kwargs['begin_date'],
+                           prediction_run_date=prediction_testrun_date)
+    return
+
 def main():
   parser = optparse.OptionParser()
   parser.add_option("-c", "--ConfigFile", dest="config_file",
@@ -338,8 +484,11 @@ def main():
 
     try:
       for process_date in dates_to_process:
-        run_wq_models(begin_date=process_date,
-                      config_file_name=options.config_file)
+        mb_engine = mb_prediction_engine()
+        mb_engine.run_wq_models(begin_date=process_date,
+                        config_file_name=options.config_file)
+        #run_wq_models(begin_date=process_date,
+        #              config_file_name=options.config_file)
     except Exception, e:
       logger.exception(e)
 

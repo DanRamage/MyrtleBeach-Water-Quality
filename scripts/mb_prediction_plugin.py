@@ -8,11 +8,11 @@ import logging.config
 import ConfigParser
 
 from wq_prediction_plugin import wq_prediction_engine_plugin
-from mb_wq_prediction_engine import run_wq_models
+from mb_wq_prediction_engine import mb_prediction_engine
 
 class mb_prediction_plugin(wq_prediction_engine_plugin):
 
-  def inititalize_plugin(self, **kwargs):
+  def initialize_plugin(self, **kwargs):
     #self.logger.debug("inititalize_plugin Started")
     self.config_file = kwargs['ini']
     self.process_dates = kwargs.get('process_date', None)
@@ -54,8 +54,12 @@ class mb_prediction_plugin(wq_prediction_engine_plugin):
 
     try:
       for process_date in dates_to_process:
-        run_wq_models(begin_date=process_date,
-                      config_file_name=self.config_file)
+        mb_engine = mb_prediction_engine()
+        mb_engine.run_wq_models(begin_date=process_date,
+                        config_file_name=self.config_file)
+
+        #run_wq_models(begin_date=process_date,
+        #              config_file_name=self.config_file)
     except Exception, e:
       logger.exception(e)
     logger.debug("run_wq_models Finished")
