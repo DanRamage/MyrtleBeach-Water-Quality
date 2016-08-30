@@ -322,10 +322,14 @@ class mb_prediction_engine(wq_prediction_engine):
 
   def run_wq_models(self, **kwargs):
     prediction_testrun_date = datetime.now()
-
     try:
       config_file = ConfigParser.RawConfigParser()
       config_file.read(kwargs['config_file_name'])
+
+      data_collector_plugin_directories=config_file.get('data_collector_plugins', 'plugin_directories').split(',')
+
+      self.collect_data(data_collector_plugin_directories=data_collector_plugin_directories)
+
 
       boundaries_location_file = config_file.get('boundaries_settings', 'boundaries_file')
       sites_location_file = config_file.get('boundaries_settings', 'sample_sites')
@@ -342,12 +346,8 @@ class mb_prediction_engine(wq_prediction_engine):
       xenia_obs_db_password = xenia_obs_db_config_file.get('xenia_observation_database', 'password')
       xenia_obs_db_name = xenia_obs_db_config_file.get('xenia_observation_database', 'database')
 
-      #output results config file. Again split out into individual ini file
-      #for security.
-      output_settings_ini = config_file.get('password_protected_configs', 'settings_ini')
-
       output_plugin_dirs=config_file.get('output_plugins', 'plugin_directories').split(',')
-    except ConfigParser.Error, e:
+    except (ConfigParser.Error, Exception) as e:
       self.logger.exception(e)
     else:
       #Load the sample site information. Has name, location and the boundaries that contain the site.
@@ -379,15 +379,15 @@ class mb_prediction_engine(wq_prediction_engine):
           #Get the station specific tide stations
           tide_station = config_file.get(site.name, 'tide_station')
           #We use the virtual tide sites as there no stations near the sites.
-        except ConfigParser.Error, e:
+        except (ConfigParser.Error,Exception) as e:
           self.logger.exception(e)
         else:
-          mb_wq_data.reset(site=site,
-                            tide_station=tide_station
-                            )
-
-          site_data['station_name'] = site.name
           try:
+            mb_wq_data.reset(site=site,
+                              tide_station=tide_station
+                              )
+
+            site_data['station_name'] = site.name
             mb_wq_data.query_data(kwargs['begin_date'], kwargs['begin_date'], site_data, reset_site_specific_data_only)
             reset_site_specific_data_only = True
             site_equations.runTests(site_data)
@@ -420,11 +420,13 @@ class mb_prediction_engine(wq_prediction_engine):
             self.logger.exception(e)
 
       self.logger.debug("Total time to execute all sites models: %f ms" % (total_time * 1000))
-
-      self.run_output_plugins(output_plugin_directories=output_plugin_dirs,
-                          site_model_ensemble=site_model_ensemble,
-                           prediction_date=kwargs['begin_date'],
-                           prediction_run_date=prediction_testrun_date)
+      try:
+        self.output_results(output_plugin_directories=output_plugin_dirs,
+                                site_model_ensemble=site_model_ensemble,
+                                prediction_date=kwargs['begin_date'],
+                                prediction_run_date=prediction_testrun_date)
+      except Exception as e:
+        self.logger.exception(e)
     return
 
 def main():
