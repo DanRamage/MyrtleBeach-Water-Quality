@@ -14,6 +14,7 @@ Changes: The web page we were scraping to get the actual sample data has been ta
 webquery when nothing is returned. We look use the historical data for this case as well.
 """
 import sys
+sys.path.append('../commonfiles/python')
 #import requests
 import logging.config
 import optparse
