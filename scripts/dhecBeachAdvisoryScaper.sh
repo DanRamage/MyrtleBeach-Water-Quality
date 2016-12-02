@@ -12,12 +12,12 @@ python --version >> /home/xeniaprod/tmp/log/dhecBeachAdvisoryScraperShellScript.
 if [ "$processType" = "webscraperesults" ]
   then
   echo $processType
-  python /home/xeniaprod/scripts/MyrtleBeach-Water-Quality/scripts/dhecBeachAdvisoryReader.py --ConfigFile=/home/xeniaprod/config/dhecBeachAdvisoryApp.ini > /home/xeniaprod/tmp/log/mb_dhec_scraper_sh.log 2>&1
+  python /home/xeniaprod/scripts/MyrtleBeach-Water-Quality/scripts/dhecBeachAdvisoryReader.py --ConfigFile=/home/xeniaprod/scripts/MyrtleBeach-Water-Quality/config/mb_dhec_bacteria_scraper.ini > /home/xeniaprod/tmp/log/mb_dhec_scraper_sh.log 2>&1
 
 elif  [ "$processType" = "createstationdata" ]
   then
   echo $processType
-  python /home/xeniaprod/scripts/MyrtleBeach-Water-Quality/scripts/dhecBeachAdvisoryReader.py --ImportStationsFile=/home/xeniaprod/scripts/dhec/SamplingStations.csv --ConfigFile=/home/xeniaprod/config/dhecBeachAdvisoryApp.ini > /home/xeniaprod/tmp/log/mb_dhec_scraper_sh.log 2>&1
+  python /home/xeniaprod/scripts/MyrtleBeach-Water-Quality/scripts/dhecBeachAdvisoryReader.py --ImportStationsFile=/home/xeniaprod/scripts/dhec/SamplingStations.csv --ConfigFile=/home/xeniaprod/scripts/MyrtleBeach-Water-Quality/config/mb_dhec_bacteria_scraper.ini > /home/xeniaprod/tmp/log/mb_dhec_scraper_sh.log 2>&1
 
 fi
 startTime=`date -u`
