@@ -22,6 +22,7 @@ import ConfigParser
 import copy
 from lxml import etree    
 import geojson
+import json
 #import urllib
 #import urllib2
 import requests
@@ -37,44 +38,6 @@ import suds
 from suds.client import Client
 from suds.xsd.doctor import Import, ImportDoctor
 
-def docExtract(srcMap,doc):
-  """
-  Document extract.
-    doc - html document to extract from
-    map - data to extract
-  """
-  #Deepcopy the source map so we don't alter it.
-  templateMap = copy.deepcopy(srcMap)
-  
-  if not isinstance(doc,etree._Element):
-    doc = etree.HTML(doc)
-  data = {}
-  for k,v in templateMap.iteritems():
-    if v is None: continue
-    if isinstance(v,dict):
-      if 'each' not in v: continue
-      val = doc.xpath(v['each'])
-      del v['each']
-      data[k] = []
-      for doc in val:
-        result =  docExtract(v,doc)
-        if(result):
-          data[k].append(result)
-    else:
-      val = doc.xpath(v)
-      if len(val) > 1:
-        data[k] = []
-        for v in val:
-          #data[k].append(v.encode('ascii', 'xmlcharrefreplace') )
-          data[k].append(v)
-      else:
-        for v in val:
-          #data[k] = v.encode('ascii', 'xmlcharrefreplace')
-          data[k] = v
-  return data
-
-
-  
 """
 Class: waterQualityAdvisory
 Purpose: Used to scrape the DHEC website for the station data as well as importing the station metadata from their csv file(from excel sheet).
@@ -287,53 +250,103 @@ class waterQualityAdvisory(object):
   Return:
     None
   """
-  def processData(self, stationNfoList, jsonOutputFilepath, historyWQ):
+  def processData(self, stationGeoJsonFile, jsonOutputFilepath, historyWQ, dhec_rest_url):
     if(self.logger):
       self.logger.info("Begin data processing.")
-    resultsData = self.__scrapeResults(stationNfoList)
-    #DWR 2012-12-05
-    if(len(resultsData)):
-      for index,stationName in enumerate(resultsData):      
-        if(len(resultsData[stationName]['results']) == 0):
+
+    self.logger.debug("Opening station metadata file: %s" % (stationGeoJsonFile))
+    stationNfoList = []
+    try:
+      with open(stationGeoJsonFile, "r") as stationDataFile:
+        stationNfoList = geojson.load(stationDataFile)
+    except IOError as e:
+      self.logger.exception(e)
+    else:
+      dhec_rest_results = self.get_station_data_from_dhec(dhec_rest_url)
+      local_metadata_updated = self.update_local_station_metadata(stationNfoList, dhec_rest_results)
+      resultsData = self.__scrapeResults(stationNfoList)
+      #DWR 2012-12-05
+      if(len(resultsData)):
+        for index,stationName in enumerate(resultsData):
+          if(len(resultsData[stationName]['results']) == 0):
+            if(self.logger):
+              self.logger.debug("Station: %s no results from webquery, adding in historical." % (stationName))
+            if(stationName in historyWQ):
+              resultsData[stationName]['results'] = historyWQ[stationName]
+      #DWR 2013-07-09
+      #No result at all.
+      else:
+        resultsData = {}
+        if(self.logger):
+          self.logger.debug("Web query failed.")
+        for feature in stationNfoList['features']:
+          stationName = feature['id']
+          resultsData[stationName] = {'results' : {}}
           if(self.logger):
             self.logger.debug("Station: %s no results from webquery, adding in historical." % (stationName))
           if(stationName in historyWQ):
-            resultsData[stationName]['results'] = historyWQ[stationName]
-    #DWR 2013-07-09
-    #No result at all.
-    else:
-      resultsData = {}
-      if(self.logger):
-        self.logger.debug("Web query failed.")
-      for feature in stationNfoList['features']:
-        stationName = feature['id']
-        resultsData[stationName] = {'results' : {}}
-        if(self.logger):
-          self.logger.debug("Station: %s no results from webquery, adding in historical." % (stationName))
-        if(stationName in historyWQ):
-            resultsData[stationName]['results'] = historyWQ[stationName]
-        else:
-          if(self.logger):
-            self.logger.debug("Station: %s not found in historical." % (stationName))
-            
-      
-    self.__outputGeoJson(stationNfoList, resultsData, jsonOutputFilepath)
+              resultsData[stationName]['results'] = historyWQ[stationName]
+          else:
+            if(self.logger):
+              self.logger.debug("Station: %s not found in historical." % (stationName))
+
+
+      self.__outputGeoJson(stationNfoList, resultsData, jsonOutputFilepath)
+      if local_metadata_updated:
+        try:
+          self.logger.debug("Local metadata updated, saving changes.")
+          with open(stationGeoJsonFile, "w") as stationDataFile:
+            geojson.dump(stationNfoList, stationDataFile)
+        except (IOError, TypeError) as e:
+          self.logger.exception(e)
+
     if(self.logger):
       self.logger.info("Data processing completed.")
-  """
-  Function: findSecurityParams
-  Purpose: The web page was re-written implementing crappy dot net security to prevent injection.
-  """  
-  def findSecurityParams(self, htmlDoc):
-    params = None
+
+
+  def get_station_data_from_dhec(self, dhec_rest_url):
+    station_features = None
     try:
-      params =  { '__VIEWSTATE' : str(htmlDoc.xpath("//input[@id='__VIEWSTATE'] /@value")[0]),
-                  '__EVENTVALIDATION' : str(htmlDoc.xpath("//input[@id='__EVENTVALIDATION' ] /@value")[0])
-                }
-    except Exception,e:
-      if self.logger :
-        self.logger.exception(e)
-    return params
+      req = requests.get(dhec_rest_url)
+      recs = json.loads(req.content)
+      station_features = recs['features']
+    except Exception as e:
+      self.logger.exception(e)
+    return station_features
+
+  def update_local_station_metadata(self, internal_station_metadata, dhec_station_metadata):
+    local_metadata_updated = False
+    for local_meta in internal_station_metadata['features']:
+      station_name = local_meta['properties']['station']
+      self.logger.debug("Station: %s search in DHEC REST metadata" % (station_name))
+      dhec_rec = [rec for rec in dhec_station_metadata if rec['attributes']['STATION'] == station_name]
+      if len(dhec_rec):
+        local_properties = local_meta['properties']
+        dhec_properties = dhec_rec[0]['attributes']
+        if local_properties['beach'] != dhec_properties['BEACH_NAME']:
+          local_properties['beach']=dhec_properties['BEACH_NAME']
+          local_metadata_updated = True
+        if local_properties['epaid'] != dhec_properties['EPA_ID']:
+          local_properties['epaid']=dhec_properties['EPA_ID']
+          local_metadata_updated = True
+        if local_properties['desc'] != dhec_properties['LOCATION']:
+          local_properties['desc']=dhec_properties['LOCATION']
+          local_metadata_updated = True
+        if dhec_properties['Advisory'] == 'No Advisory':
+          if local_properties['sign'] != False:
+            self.logger.debug('Station: %s advisory status changed from True to False.' % (station_name))
+            local_metadata_updated = True
+          local_properties['sign']=False
+        else:
+          if local_properties['sign'] != True:
+            self.logger.debug('Station: %s advisory status changed from False to True.' % (station_name))
+            local_metadata_updated = True
+          local_properties['sign']=True
+
+      else:
+        self.logger.error("Unable to find station: %s in dhec rest data" % (station_name))
+
+    return local_metadata_updated
   """
   Function: __scrapeResults
   Purpose: This is the function that loops through the station list, queries the webpage for the results creating the individual
@@ -407,75 +420,6 @@ class waterQualityAdvisory(object):
     if self.logger:
       self.logger.debug("SOAP request completed.")
     return results
-  """
-  def __scrapeResults(self, stationNfoList):
-    if(self.logger):
-      self.logger.info("Scraping web pages.")
-    results = {}
-    #Get the starting page so we can get the "security" crap.
-    if(self.logger):
-      self.logger.debug("Requesting initial page: %s" % (self.baseUrl))
-    # Open the url
-    headers = {"Content-type": "application/x-www-form-urlencoded",
-               "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:24.0) Gecko/20100101 Firefox/24.0"}
-    req = requests.get(self.baseUrl, headers=headers)
-    if(req.status_code == 200):
-      initDoc = etree.HTML(req.text)
-      #if(self.logger):
-      #  self.logger.debug(req.text)
-      securityParams = self.findSecurityParams(initDoc)
-      #These are the parameters that are used by the dot Net reuqest handler to insure someone isn't
-      #trying to inject crap. The one thing that changes is the DropDownList1, this is the parameter
-      #where the station of interest is set.
-      #2014-07-11 DWR
-      #Check we have valid object before attempting to use.
-      if securityParams is not None:
-        params = {'DropDownList1' : '',
-          '__EVENTARGUMENT' : '',
-          '__EVENTTARGET' :  'DropDownList1',
-          '__LASTFOCUS' : '',
-          '__EVENTVALIDATION' : securityParams["__EVENTVALIDATION"],
-          '__VIEWSTATE' : securityParams["__VIEWSTATE"]
-        }
-        #Without the trailing '/', the server rejects the request.
-        url = self.baseUrl + "/"
-        for station in stationNfoList['features']:
-          try:
-            stationName = station['properties']['station']
-            params['DropDownList1'] = stationName
-            #create the url and the request
-            if(self.logger):
-              self.logger.debug("Requesting station: %s Base url: %s" % (stationName, url))
-            stationReq = requests.post(url, data=params, headers=headers)
-          except Exception,e:
-            if(self.logger):
-              self.logger.exception(e)
-          else:
-            try:
-              if(stationReq.status_code == 200):
-                #if(self.logger):
-                #  self.logger.debug("Page rcvd: %s" % (stationReq.text))
-                parseResult = docExtract(self.pageDataDict, stationReq.text)
-                #Loop through and fixup the date to be ISO centric.
-                #for resultNfo in parseResult['results']:
-                #  isoDate = datetime.datetime.strptime(resultNfo['date'], "%Y-%m-%d")
-                #  resultNfo['date'] = isoDate.strftime("%Y-%m-%d")
-                if(parseResult):
-                  results[stationName] = parseResult
-
-                if(self.logger):
-                  self.logger.debug(results[stationName])
-              else:
-                if(self.logger):
-                  self.logger.error("Status Code: %d received, unable to process station data." %(stationReq.status_code))
-            except Exception,e:
-              if(self.logger):
-                self.logger.exception(e)
-    else:
-      if(self.logger):
-        self.logger.error("Error: %s when requesting page: %s" % (req.reason, self.baseUrl))
-    return(results)
-  """
   """
   Function: __scrapeResults
   Purpose: This is the function that loops through the station list, queries the webpage for the results creating the individual
@@ -606,7 +550,8 @@ def main():
     
     #The past WQ results.
     stationWQHistoryFile = configFile.get('stationData', 'stationWQHistoryFile')
-  
+
+    dhec_rest_url = configFile.get('websettings', 'dhec_rest_url')
   except ConfigParser.Error, e:
     if(logger):
       logger.exception(e)
@@ -644,14 +589,12 @@ def main():
       if(options.importStations):
         advisoryObj.createStationGeoJSON(options.importStations, stationGeoJsonFile)      
       else:
-        stationDataFile = open(stationGeoJsonFile, "r")
-        stationList = geojson.load(stationDataFile)
-        stationDataFile.close()
         #See if we have a historical WQ file, if so let's use that as well.
         historyWQFile = open(stationWQHistoryFile, "r")
         historyWQ = geojson.load(historyWQFile)
         
-        advisoryObj.processData(stationList, jsonFilepath, historyWQ)
+        #advisoryObj.processData(stationList, jsonFilepath, historyWQ, dhec_rest_url)
+        advisoryObj.processData(stationGeoJsonFile, jsonFilepath, historyWQ, dhec_rest_url)
     except IOError,e:
       if(logger):
         logger.exception(e)
