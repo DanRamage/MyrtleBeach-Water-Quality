@@ -307,6 +307,7 @@ class waterQualityAdvisory(object):
   def get_station_data_from_dhec(self, dhec_rest_url):
     station_features = None
     try:
+      self.logger.debug("Querying DHEC rest.")
       req = requests.get(dhec_rest_url)
       recs = json.loads(req.content)
       station_features = recs['features']
