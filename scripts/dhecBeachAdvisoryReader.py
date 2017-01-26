@@ -497,9 +497,10 @@ class waterQualityAdvisory(object):
       if(self.logger):
         self.logger.info("Opened JSON file: %s" % (fullPath))
 
-      json_ret = {'status' : {'http_code': 200},
-                  'contents': collection}
-      jsonFile.write(geojson.dumps(json_ret, separators=(',', ':')))
+      jsonFile.write(geojson.dumps(collection, separators=(',', ':')))
+      #json_ret = {'status' : {'http_code': 200},
+      #            'contents': collection}
+      #jsonFile.write(geojson.dumps(json_ret, separators=(',', ':')))
       #jsonFile.write(geojson.dumps(collection, separators=(',', ':')))
       if(self.logger):
         self.logger.info("JSON results written to file.")
