@@ -330,8 +330,8 @@ class waterQualityAdvisory(object):
         if local_properties['epaid'] != dhec_properties['EPA_ID']:
           local_properties['epaid']=dhec_properties['EPA_ID']
           local_metadata_updated = True
-        if local_properties['desc'] != dhec_properties['LOCATION']:
-          local_properties['desc']=dhec_properties['LOCATION']
+        if local_properties['desc'] != dhec_properties['Address']:
+          local_properties['desc']=dhec_properties['Address']
           local_metadata_updated = True
         if dhec_properties['Advisory'] == 'No Advisory':
           if local_properties['sign'] != False:
