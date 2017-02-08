@@ -61,7 +61,6 @@ class nexrad_collector_plugin(data_collector_plugin):
         historyWQFile = open(stationWQHistoryFile, "r")
         historyWQ = geojson.load(historyWQFile)
 
-        #advisoryObj.processData(stationList, jsonFilepath, historyWQ, dhec_rest_url)
         advisoryObj.processData(stationGeoJsonFile, jsonFilepath, historyWQ, dhec_rest_url)
       except (IOError,Exception) as e:
         if(logger):
