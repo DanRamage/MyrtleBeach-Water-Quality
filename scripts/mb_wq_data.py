@@ -154,7 +154,7 @@ class mb_wq_historical_data(wq_data):
   def __del__(self):
     if self.logger:
       self.logger.debug("Closing connection to xenia db")
-    self.xenia_db.DB.close()
+    self.xenia_obs_db.DB.close()
 
   def reset(self, **kwargs):
     self.site = kwargs['site']
