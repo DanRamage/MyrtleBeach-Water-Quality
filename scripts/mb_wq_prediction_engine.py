@@ -259,7 +259,7 @@ def run_output_plugins(**kwargs):
                                 ensemble_tests=kwargs['site_model_ensemble'])
       plugin_cnt += 1
     else:
-      logger.error("Failed to initialize plugin: %s" % (plugin.details))
+      logger.error("Failed to initialize plugin: %s" % (plugin.name))
   logger.debug("%d output plugins run in %f seconds" % (plugin_cnt, time.time() - plugin_start_time))
   logger.info("Finished run_output_plugins")
 """
