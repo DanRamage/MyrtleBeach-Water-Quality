@@ -20,6 +20,7 @@ from enterococcus_wq_test import EnterococcusPredictionTest,EnterococcusPredicti
 from mb_wq_data import mb_wq_model_data, mb_sample_sites
 from output_plugin import output_plugin
 from wq_prediction_engine import wq_prediction_engine
+from stats import stats
 
 '''
 Function: build_test_objects
@@ -400,7 +401,7 @@ class mb_prediction_engine(wq_prediction_engine):
               self.logger.debug("Site: %s total time to execute models: %f ms" % (site.name, total_test_time * 1000))
               total_time += total_test_time
 
-              """
+
               #Calculate some statistics on the entero results. This is making an assumption
               #that all the tests we are running are calculating the same value, the entero
               #amount.
@@ -411,16 +412,18 @@ class mb_prediction_engine(wq_prediction_engine):
                   if test.mlrResult is not None:
                     entero_stats.addValue(test.mlrResult)
                 entero_stats.doCalculations()
+
               #Check to see if there is a entero sample for our date as long as the date
               #is not the current date.
               entero_value = None
               if datetime.now().date() != kwargs['begin_date'].date():
                 entero_value = check_site_date_for_sampling_date(site.name, kwargs['begin_date'], output_settings_ini, kwargs['use_logging'])
-              """
+
 
               site_model_ensemble.append({'metadata': site,
                                           'models': site_equations,
-                                          'entero_value': None})
+                                          'entero_value': None,
+                                          'statistics': entero_stats})
           except Exception,e:
             self.logger.exception(e)
 

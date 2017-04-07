@@ -70,7 +70,52 @@
                         </table>
                     </div>
                 % endif
-
+                % if site_data['statistics'] is not None:
+                    <div class="row">
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Minimum Entero</th>
+                                <th>Maximum Entero</th>
+                                <th>Average Entero</th>
+                                <th>Median Entero</th>
+                                <th>Geometric Mean</th>
+                                <th>StdDev Entero</th>
+                            </tr>
+                            <tr>
+                              % if site_data['statistics'].minVal is not None:
+                                <td>${"%.2f" % (site_data['statistics'].minVal)}</td>
+                              % else:
+                                <td></td>
+                              % endif
+                              % if site_data['statistics'].maxVal is not None:
+                                <td>${"%.2f" % (site_data['statistics'].maxVal)}</td>
+                              % else:
+                                <td></td>
+                              % endif
+                              % if site_data['statistics'].average is not None:
+                                  <td>${"%.2f" % (site_data['statistics'].average)}</td>
+                              % else:
+                                <td></td>
+                              % endif
+                              % if site_data['statistics'].median is not None:
+                                  <td>${"%.2f" % (site_data['statistics'].median)}</td>
+                              % else:
+                                <td></td>
+                              % endif
+                              % if site_data['statistics'].geometric_mean is not None:
+                                  <td>${"%.2f" % (site_data['statistics'].geometric_mean)}</td>
+                              % else:
+                                <td></td>
+                              % endif
+                              % if site_data['statistics'].stdDev is not None:
+                                  <td>${"%.2f" % (site_data['statistics'].stdDev)}</td>
+                              % else:
+                                <td></td>
+                              % endif
+                            </tr>
+                        </table>
+                    </div>
+                % endif
                 <div class="row">
                     <table class="table table-bordered">
                         <tr>
