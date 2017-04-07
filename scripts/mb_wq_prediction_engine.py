@@ -375,49 +375,52 @@ class mb_prediction_engine(wq_prediction_engine):
         try:
           #Get all the models used for the particular sample site.
           model_list = self.build_test_objects(config_file=config_file, site_name=site.name)
-          #Create the container for all the models.
-          site_equations = wqEquations(site.name, model_list, True)
+          if len(model_list):
+            #Create the container for all the models.
+            site_equations = wqEquations(site.name, model_list, True)
 
-          #Get the station specific tide stations
-          tide_station = config_file.get(site.name, 'tide_station')
-          #We use the virtual tide sites as there no stations near the sites.
+            #Get the station specific tide stations
+            tide_station = config_file.get(site.name, 'tide_station')
+          else:
+            self.logger.error("No models found for site: %s" % (site.name))
         except (ConfigParser.Error,Exception) as e:
           self.logger.exception(e)
         else:
           try:
-            mb_wq_data.reset(site=site,
-                              tide_station=tide_station
-                              )
+            if len(model_list):
+              mb_wq_data.reset(site=site,
+                                tide_station=tide_station
+                                )
 
-            site_data['station_name'] = site.name
-            mb_wq_data.query_data(kwargs['begin_date'], kwargs['begin_date'], site_data, reset_site_specific_data_only)
-            reset_site_specific_data_only = True
-            site_equations.runTests(site_data)
-            total_test_time = sum(testObj.test_time for testObj in site_equations.tests)
-            self.logger.debug("Site: %s total time to execute models: %f ms" % (site.name, total_test_time * 1000))
-            total_time += total_test_time
+              site_data['station_name'] = site.name
+              mb_wq_data.query_data(kwargs['begin_date'], kwargs['begin_date'], site_data, reset_site_specific_data_only)
+              reset_site_specific_data_only = True
+              site_equations.runTests(site_data)
+              total_test_time = sum(testObj.test_time for testObj in site_equations.tests)
+              self.logger.debug("Site: %s total time to execute models: %f ms" % (site.name, total_test_time * 1000))
+              total_time += total_test_time
 
-            """
-            #Calculate some statistics on the entero results. This is making an assumption
-            #that all the tests we are running are calculating the same value, the entero
-            #amount.
-            entero_stats = None
-            if len(site_equations.tests):
-              entero_stats = stats()
-              for test in site_equations.tests:
-                if test.mlrResult is not None:
-                  entero_stats.addValue(test.mlrResult)
-              entero_stats.doCalculations()
-            #Check to see if there is a entero sample for our date as long as the date
-            #is not the current date.
-            entero_value = None
-            if datetime.now().date() != kwargs['begin_date'].date():
-              entero_value = check_site_date_for_sampling_date(site.name, kwargs['begin_date'], output_settings_ini, kwargs['use_logging'])
-            """
+              """
+              #Calculate some statistics on the entero results. This is making an assumption
+              #that all the tests we are running are calculating the same value, the entero
+              #amount.
+              entero_stats = None
+              if len(site_equations.tests):
+                entero_stats = stats()
+                for test in site_equations.tests:
+                  if test.mlrResult is not None:
+                    entero_stats.addValue(test.mlrResult)
+                entero_stats.doCalculations()
+              #Check to see if there is a entero sample for our date as long as the date
+              #is not the current date.
+              entero_value = None
+              if datetime.now().date() != kwargs['begin_date'].date():
+                entero_value = check_site_date_for_sampling_date(site.name, kwargs['begin_date'], output_settings_ini, kwargs['use_logging'])
+              """
 
-            site_model_ensemble.append({'metadata': site,
-                                        'models': site_equations,
-                                        'entero_value': None})
+              site_model_ensemble.append({'metadata': site,
+                                          'models': site_equations,
+                                          'entero_value': None})
           except Exception,e:
             self.logger.exception(e)
 

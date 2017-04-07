@@ -725,7 +725,7 @@ class mb_wq_model_data(wq_data):
     self.logger = logging.getLogger(type(self).__name__)
 
     #List of platforms that we query same obs types from
-    self.platforms = ['carocoops.SUN2.buoy', 'lbhmc.2ndAveNorth.pier', 'lbhmc.CherryGrove.pier', 'lbhmc.Apache.pier']
+    self.platforms = ['carocoops.SUN2.buoy', 'lbhmc.2ndave.pier', 'lbhmc.cherrygrove.pier', 'lbhmc.apachepier.pier']
 
     self.site = None
     #The main station we retrieve the values from.
@@ -772,18 +772,59 @@ class mb_wq_model_data(wq_data):
       self.logger.debug("Creating and initializing data dict.")
 
     if not initialize_site_specific_data_only:
-
-      wq_tests_data['sun2_wind_speed'] = wq_defines.NO_DATA
-      wq_tests_data['sun2_wind_dir_val'] = wq_defines.NO_DATA
       wq_tests_data['nos8661070_wind_spd'] = wq_defines.NO_DATA
       wq_tests_data['nos8661070_wind_dir_val'] = wq_defines.NO_DATA
       wq_tests_data['nos8661070_water_temp'] = wq_defines.NO_DATA
+      wq_tests_data['nos8661070_water_level'] = wq_defines.NO_DATA
 
+      for platform in self.platforms:
+        platform_name = platform.split('.')
+
+        #Sympify does not like expression variables that start with a number.
+        if platform_name[1] == '2ndave':
+          platform_name[1] = 'secondavenorth'
+        var_name = '%s_water_temp' % (platform_name[1].lower())
+        wq_tests_data[var_name] = wq_defines.NO_DATA
+        var_name = '%s_salinity' % (platform_name[1].lower())
+        wq_tests_data[var_name] = wq_defines.NO_DATA
+        if platform == 'carocoops.SUN2.buoy':
+          var_name = '%s_wind_speed' % (platform_name[1].lower())
+          wq_tests_data[var_name] = wq_defines.NO_DATA
+          var_name = '%s_wind_dir_val' % (platform_name[1].lower())
+          wq_tests_data[var_name] = wq_defines.NO_DATA
+        else:
+          var_name = "%s_chlorophyl" % (platform_name[1].lower())
+          wq_tests_data[var_name] = wq_defines.NO_DATA
+          var_name = "%s_do_percent" % (platform_name[1].lower())
+          wq_tests_data[var_name] = wq_defines.NO_DATA
+          var_name = "%s_do_mg" % (platform_name[1].lower())
+          wq_tests_data[var_name] = wq_defines.NO_DATA
+
+      """
+      wq_tests_data['sun2_wind_speed'] = wq_defines.NO_DATA
+      wq_tests_data['sun2_wind_dir_val'] = wq_defines.NO_DATA
+
+      wq_tests_data['apache_water_temp'] = wq_defines.NO_DATA
+      wq_tests_data['apache_salinity'] = wq_defines.NO_DATA
+      wq_tests_data['apache_do_percent'] = wq_defines.NO_DATA
+      wq_tests_data['apache_do_mg'] = wq_defines.NO_DATA
+
+      wq_tests_data['2ndave_water_temp'] = wq_defines.NO_DATA
+      wq_tests_data['2ndave_salinity'] = wq_defines.NO_DATA
+      wq_tests_data['2ndave_do_percent'] = wq_defines.NO_DATA
+      wq_tests_data['2ndave_do_mg'] = wq_defines.NO_DATA
+
+      wq_tests_data['cherrygrove_water_temp'] = wq_defines.NO_DATA
+      wq_tests_data['cherrygrove_salinity'] = wq_defines.NO_DATA
+      wq_tests_data['cherrygrove_do_percent'] = wq_defines.NO_DATA
+      wq_tests_data['cherrygrove_do_mg'] = wq_defines.NO_DATA
+      """
+      """
       for prev_hours in range(24, 192, 24):
         wq_tests_data['sun2_avg_salinity_%d' % (prev_hours)] = wq_defines.NO_DATA
         wq_tests_data['sun2_min_salinity_%d' % (prev_hours)] = wq_defines.NO_DATA
         wq_tests_data['sun2_max_salinity_%d' % (prev_hours)] = wq_defines.NO_DATA
-
+      """
       #wq_tests_data['sun2_avg_water_temp_24'] = wq_defines.NO_DATA
       #wq_tests_data['sun2_min_water_temp'] = wq_defines.NO_DATA
       #wq_tests_data['sun2_max_water_temp'] = wq_defines.NO_DATA
@@ -839,14 +880,483 @@ class mb_wq_model_data(wq_data):
 
     #If we are resetting only the site specific data, no need to re-query these.
     if not reset_site_specific_data_only:
-      self.get_sun2_data(start_date, wq_tests_data)
-      self.get_nos_data(start_date, wq_tests_data)
       self.get_tide_data(start_date, wq_tests_data)
-
+      self.get_nos_data(start_date, wq_tests_data)
+      for platform in self.platforms:
+        var_name = platform.split('.')
+        if var_name[1] == '2ndave':
+          var_name[1] = 'secondavenorth'
+        self.get_platform_data(start_date, platform, wq_tests_data, var_name[1].lower())
+      """
+      self.get_sun2_data(start_date, wq_tests_data)
+      self.get_2ndave_data(start_date, wq_tests_data)
+      self.get_apache_data(start_date, wq_tests_data)
+      self.get_cherrygrove_data(start_date, wq_tests_data)
+      """
     self.get_nexrad_data(start_date, wq_tests_data)
 
     self.logger.debug("Site: %s Finished query data for datetime: %s" % (self.site.name, start_date))
 
+  def get_platform_data(self, start_date, platform_handle, wq_tests_data, var_name):
+      self.logger.debug("Start retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+      salinity_id = water_temp_id = wind_spd_sensor_id = wind_dir_sensor_id = chl_sensor_id = do_percent_sensor_id = do_mg_sensor_id = None
+
+      salinity_var_name = "%s_salinity" % var_name
+      wind_spd_var_name = "%s_wind_speed" % var_name
+      wind_dir_var_name = "%s_wind_dir_val" % var_name
+      water_temp_var_name = "%s_water_temp" % var_name
+      chl_var_name = "%s_chlorophyl" % var_name
+      do_percent_var_name = "%s_do_percent" % var_name
+      do_mg_var_name = "%s_do_mg" % var_name
+      if salinity_var_name in wq_tests_data:
+        #Get the sensor id for salinity
+        salinity_id = self.xenia_obs_db.sensorExists('salinity', 'psu', platform_handle, 1)
+
+      if water_temp_var_name in wq_tests_data:
+        #Water temp id.
+        water_temp_id = self.xenia_obs_db.sensorExists('water_temperature', 'celsius', platform_handle, 1)
+
+      if wind_spd_var_name in wq_tests_data and wind_dir_var_name in wq_tests_data:
+        #Get the sensor id for wind speed and wind direction
+        wind_spd_sensor_id = self.xenia_obs_db.sensorExists('wind_speed', 'm_s-1', platform_handle, 1)
+        wind_dir_sensor_id = self.xenia_obs_db.sensorExists('wind_from_direction', 'degrees_true', platform_handle, 1)
+
+      if chl_var_name in wq_tests_data:
+        chl_sensor_id = self.xenia_obs_db.sensorExists('chl_concentration', 'ug_L-1', platform_handle, 1)
+
+      if do_percent_var_name in wq_tests_data:
+        do_percent_sensor_id = self.xenia_obs_db.sensorExists('oxygen_concentration', "percent", platform_handle, 1)
+
+      if do_mg_var_name in wq_tests_data:
+        do_mg_sensor_id = self.xenia_obs_db.sensorExists('oxygen_concentration', 'mg_L-1', platform_handle, 1)
+
+      end_date = start_date
+      begin_date = start_date - timedelta(hours=24)
+      try:
+        if salinity_id is not None:
+          #(qc_level = %d OR qc_level IS NULL)
+          salinity_data = self.xenia_obs_db.session.query(sl_multi_obs)\
+            .filter(sl_multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.sensor_id == salinity_id)\
+            .filter(or_(sl_multi_obs.qc_level == qaqcTestFlags.DATA_QUAL_GOOD, sl_multi_obs.qc_level == None))\
+            .order_by(sl_multi_obs.m_date).all()
+
+        if water_temp_id is not None:
+          water_temp_data  = self.xenia_obs_db.session.query(sl_multi_obs)\
+            .filter(sl_multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.sensor_id == water_temp_id)\
+            .filter(or_(sl_multi_obs.qc_level == qaqcTestFlags.DATA_QUAL_GOOD, sl_multi_obs.qc_level == None))\
+            .order_by(sl_multi_obs.m_date).all()
+
+        if wind_spd_sensor_id is not None and wind_dir_sensor_id is not None:
+          wind_speed_data = self.xenia_obs_db.session.query(sl_multi_obs)\
+            .filter(sl_multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.sensor_id == wind_spd_sensor_id)\
+            .order_by(sl_multi_obs.m_date).all()
+
+          wind_dir_data = self.xenia_obs_db.session.query(sl_multi_obs)\
+            .filter(sl_multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.sensor_id == wind_dir_sensor_id)\
+            .order_by(sl_multi_obs.m_date).all()
+
+        if chl_sensor_id is not None:
+          chl_data = self.xenia_obs_db.session.query(sl_multi_obs)\
+            .filter(sl_multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.sensor_id == chl_sensor_id)\
+            .order_by(sl_multi_obs.m_date).all()
+
+        if do_percent_sensor_id is not None:
+          do_percent_data = self.xenia_obs_db.session.query(sl_multi_obs)\
+            .filter(sl_multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.sensor_id == do_percent_sensor_id)\
+            .order_by(sl_multi_obs.m_date).all()
+
+        if do_mg_sensor_id is not None:
+          do_mg_data = self.xenia_obs_db.session.query(sl_multi_obs)\
+            .filter(sl_multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+            .filter(sl_multi_obs.sensor_id == do_mg_sensor_id)\
+            .order_by(sl_multi_obs.m_date).all()
+
+      except Exception, e:
+        self.logger.exception(e)
+      else:
+        if salinity_id is not None:
+          if len(salinity_data):
+            wq_tests_data[salinity_var_name] =sum(sal.m_value for sal in salinity_data) / len(salinity_data)
+          self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (platform_handle,wq_tests_data[salinity_var_name], len(salinity_data)))
+        if water_temp_id is not None:
+          if len(water_temp_data):
+            wq_tests_data[water_temp_var_name] = sum(temp.m_value for temp in water_temp_data) / len(water_temp_data)
+          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data[water_temp_var_name], len(water_temp_data)))
+
+        if chl_sensor_id is not None:
+          if len(chl_data):
+            wq_tests_data[chl_var_name] = sum(rec.m_value for rec in chl_data) / len(chl_data)
+          self.logger.debug("Platform: %s Avg Chl: %f Records used: %d" % (platform_handle,wq_tests_data[chl_var_name], len(chl_data)))
+
+        if do_percent_sensor_id is not None:
+          if len(do_percent_data):
+            wq_tests_data[do_percent_var_name] = sum(rec.m_value for rec in do_percent_data) / len(do_percent_data)
+          self.logger.debug("Platform: %s Avg DO %%: %f Records used: %d" % (platform_handle, wq_tests_data[do_percent_var_name], len(do_percent_data)))
+
+        if do_mg_sensor_id is not None:
+          if len(do_mg_data):
+            wq_tests_data[do_mg_var_name] = sum(rec.m_value for rec in do_mg_data) / len(do_mg_data)
+          self.logger.debug("Platform: %s Avg Do mg: %f Records used: %d" % (platform_handle,wq_tests_data[do_mg_var_name], len(do_mg_data)))
+
+        if wind_dir_sensor_id is not None and wind_spd_sensor_id is not None:
+          wind_dir_tuples = []
+          direction_tuples = []
+          scalar_speed_avg = None
+          speed_count = 0
+          for wind_speed_row in wind_speed_data:
+            for wind_dir_row in wind_dir_data:
+              if wind_speed_row.m_date == wind_dir_row.m_date:
+                self.logger.debug("Building tuple for Speed(%s): %f Dir(%s): %f" % (wind_speed_row.m_date, wind_speed_row.m_value, wind_dir_row.m_date, wind_dir_row.m_value))
+                if scalar_speed_avg is None:
+                  scalar_speed_avg = 0
+                scalar_speed_avg += wind_speed_row.m_value
+                speed_count += 1
+                #Vector using both speed and direction.
+                wind_dir_tuples.append((wind_speed_row.m_value, wind_dir_row.m_value))
+                #Vector with speed as constant(1), and direction.
+                direction_tuples.append((1, wind_dir_row.m_value))
+                break
+
+          if len(wind_dir_tuples):
+            avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
+            self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                              avg_speed_dir_components[0],
+                                                                                              avg_speed_dir_components[0] * meters_per_second_to_mph,
+                                                                                              avg_speed_dir_components[1]))
+
+            #Unity components, just direction with speeds all 1.
+            avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
+            scalar_speed_avg = scalar_speed_avg / speed_count
+            wq_tests_data[wind_spd_var_name] = scalar_speed_avg * meters_per_second_to_mph
+            wq_tests_data[wind_dir_var_name] = avg_dir_components[1]
+            self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                                     scalar_speed_avg,
+                                                                                                     scalar_speed_avg * meters_per_second_to_mph,
+                                                                                                     avg_dir_components[1]))
+        else:
+          self.logger.debug("Platform: %s no wind data found for datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+
+      self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+  
+  """
+  def get_2ndave_data(self, start_date, wq_tests_data):
+    platform_handle = 'lbhmc.2ndave.pier'
+
+    end_date = start_date
+    begin_date = start_date - timedelta(hours=24)
+    try:
+      water_temp_id = self.xenia_obs_db.sensorExists('water_temperature', 'celsius', platform_handle, 1)
+      salinity_id = self.xenia_obs_db.sensorExists('salinity', 'psu', platform_handle, 1)
+      do_percent_id = self.xenia_obs_db.sensorExists('oxygen_concentration', 'percent', platform_handle, 1)
+      do_mg_L_id = self.xenia_obs_db.sensorExists('oxygen_concentration', 'mg_L-1', platform_handle, 1)
+
+      water_temp_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == water_temp_id) \
+        .order_by(multi_obs.m_date).all()
+
+      salinity_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == salinity_id) \
+        .order_by(multi_obs.m_date).all()
+
+      do_percent_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == do_percent_id) \
+        .order_by(multi_obs.m_date).all()
+
+      do_mg_l_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == do_mg_L_id) \
+        .order_by(multi_obs.m_date).all()
+
+    except Exception, e:
+      self.logger.exception(e)
+    else:
+      if len(water_temp_data):
+        wq_tests_data['2ndave_water_temp'] = sum(rec.m_value for rec in water_temp_data) / len(water_temp_data)
+        self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (
+        platform_handle, wq_tests_data['2ndave_water_temp'], len(water_temp_data)))
+      else:
+        self.logger.error("Platform: %s returned no water_temperature records." % (platform_handle))
+
+      if len(salinity_data):
+        wq_tests_data['2ndave_salinity'] = sum(rec.m_value for rec in salinity_data) / len(salinity_data)
+        self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (
+        platform_handle, wq_tests_data['2ndave_salinity'], len(salinity_data)))
+      else:
+        self.logger.error("Platform: %s returned no salinity records." % (platform_handle))
+
+      if len(do_percent_data):
+        wq_tests_data['2ndave_do_percent'] = sum(rec.m_value for rec in do_percent_data) / len(do_percent_data)
+        self.logger.debug("Platform: %s Avg DO Percent: %f Records used: %d" % (
+        platform_handle, wq_tests_data['2ndave_do_percent'], len(do_percent_data)))
+      else:
+        self.logger.error("Platform: %s returned no do_percent records." % (platform_handle))
+
+      if len(do_mg_l_data):
+        wq_tests_data['2ndave_do_mg'] = sum(rec.m_value for rec in do_mg_l_data) / len(do_mg_l_data)
+        self.logger.debug("Platform: %s Avg DO mg_L: %f Records used: %d" % (
+        platform_handle, wq_tests_data['2ndave_do_mg'], len(do_mg_l_data)))
+      else:
+        self.logger.error("Platform: %s returned no do mg_L records." % (platform_handle))
+
+    return
+
+  def get_apache_data(self, start_date, wq_tests_data):
+    platform_handle = 'lbhmc.apachepier.pier'
+    
+    end_date = start_date
+    begin_date = start_date - timedelta(hours=24)
+    try:
+      water_temp_id = self.xenia_obs_db.sensorExists('water_temperature', 'celsius', platform_handle, 1)
+      salinity_id = self.xenia_obs_db.sensorExists('salinity', 'psu', platform_handle, 1)
+      do_percent_id = self.xenia_obs_db.sensorExists('oxygen_concentration', 'percent', platform_handle, 1)
+      do_mg_L_id = self.xenia_obs_db.sensorExists('oxygen_concentration', 'mg_L-1', platform_handle, 1)
+
+      water_temp_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == water_temp_id) \
+        .order_by(multi_obs.m_date).all()
+
+      salinity_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == salinity_id) \
+        .order_by(multi_obs.m_date).all()
+
+      do_percent_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == do_percent_id) \
+        .order_by(multi_obs.m_date).all()
+
+      do_mg_l_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == do_mg_L_id) \
+        .order_by(multi_obs.m_date).all()
+
+    except Exception, e:
+      self.logger.exception(e)
+    else:
+      if len(water_temp_data):
+        wq_tests_data['apache_water_temp'] = sum(rec.m_value for rec in water_temp_data) / len(water_temp_data)
+        self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (
+        platform_handle, wq_tests_data['apache_water_temp'], len(water_temp_data)))
+      else:
+        self.logger.error("Platform: %s returned no water_temperature records." % (platform_handle))
+
+      if len(salinity_data):
+        wq_tests_data['apache_salinity'] = sum(rec.m_value for rec in salinity_data) / len(salinity_data)
+        self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (
+        platform_handle, wq_tests_data['apache_salinity'], len(salinity_data)))
+      else:
+        self.logger.error("Platform: %s returned no salinity records." % (platform_handle))
+
+      if len(do_percent_data):
+        wq_tests_data['apache_do_percent'] = sum(rec.m_value for rec in do_percent_data) / len(do_percent_data)
+        self.logger.debug("Platform: %s Avg DO Percent: %f Records used: %d" % (
+        platform_handle, wq_tests_data['apache_do_percent'], len(do_percent_data)))
+      else:
+        self.logger.error("Platform: %s returned no do_percent records." % (platform_handle))
+
+      if len(do_mg_l_data):
+        wq_tests_data['apache_do_mg'] = sum(rec.m_value for rec in do_mg_l_data) / len(do_mg_l_data)
+        self.logger.debug("Platform: %s Avg DO mg_L: %f Records used: %d" % (
+        platform_handle, wq_tests_data['apache_do_mg'], len(do_mg_l_data)))
+      else:
+        self.logger.error("Platform: %s returned no do mg_L records." % (platform_handle))
+
+    return
+
+  def get_cherrygrove_data(self, start_date, wq_tests_data):
+    platform_handle = 'lbhmc.cherrygrove.pier'
+
+    end_date = start_date
+    begin_date = start_date - timedelta(hours=24)
+    try:
+      water_temp_id = self.xenia_obs_db.sensorExists('water_temperature', 'celsius', platform_handle, 1)
+      salinity_id = self.xenia_obs_db.sensorExists('salinity', 'psu', platform_handle, 1)
+      do_percent_id = self.xenia_obs_db.sensorExists('oxygen_concentration', 'percent', platform_handle, 1)
+      do_mg_L_id = self.xenia_obs_db.sensorExists('oxygen_concentration', 'mg_L-1', platform_handle, 1)
+
+      water_temp_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == water_temp_id) \
+        .order_by(multi_obs.m_date).all()
+
+      salinity_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == salinity_id) \
+        .order_by(multi_obs.m_date).all()
+
+      do_percent_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == do_percent_id) \
+        .order_by(multi_obs.m_date).all()
+
+      do_mg_l_data = self.xenia_obs_db.session.query(multi_obs) \
+        .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S')) \
+        .filter(multi_obs.sensor_id == do_mg_L_id) \
+        .order_by(multi_obs.m_date).all()
+
+    except Exception, e:
+      self.logger.exception(e)
+    else:
+      if len(water_temp_data):
+        wq_tests_data['cherrygrove_water_temp'] = sum(rec.m_value for rec in water_temp_data) / len(water_temp_data)
+        self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (
+        platform_handle, wq_tests_data['cherrygrove_water_temp'], len(water_temp_data)))
+      else:
+        self.logger.error("Platform: %s returned no water_temperature records." % (platform_handle))
+
+      if len(salinity_data):
+        wq_tests_data['cherrygrove_salinity'] = sum(rec.m_value for rec in salinity_data) / len(salinity_data)
+        self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (
+        platform_handle, wq_tests_data['cherrygrove_salinity'], len(salinity_data)))
+      else:
+        self.logger.error("Platform: %s returned no salinity records." % (platform_handle))
+
+      if len(do_percent_data):
+        wq_tests_data['cherrygrove_do_percent'] = sum(rec.m_value for rec in do_percent_data) / len(do_percent_data)
+        self.logger.debug("Platform: %s Avg DO Percent: %f Records used: %d" % (
+        platform_handle, wq_tests_data['cherrygrove_do_percent'], len(do_percent_data)))
+      else:
+        self.logger.error("Platform: %s returned no do_percent records." % (platform_handle))
+
+      if len(do_mg_l_data):
+        wq_tests_data['cherrygrove_do_mg'] = sum(rec.m_value for rec in do_mg_l_data) / len(do_mg_l_data)
+        self.logger.debug("Platform: %s Avg DO mg_L: %f Records used: %d" % (
+        platform_handle, wq_tests_data['cherrygrove_do_mg'], len(do_mg_l_data)))
+      else:
+        self.logger.error("Platform: %s returned no do mg_L records." % (platform_handle))
+
+    return
+
+  def get_sun2_data(self, start_date, wq_tests_data):
+      platform_handle = 'carocoops.SUN2.buoy'
+
+      self.logger.debug("Start retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+
+      #Get the sensor id for salinity
+      salinity_id = self.xenia_obs_db.sensorExists('salinity', 'psu', platform_handle, 1)
+
+      #Water temp id.
+      water_temp_id = self.xenia_obs_db.sensorExists('water_temperature', 'celsius', platform_handle, 1)
+
+      #Get the sensor id for wind speed and wind direction
+      wind_spd_sensor_id = self.xenia_obs_db.sensorExists('wind_speed', 'm_s-1', platform_handle, 1)
+      wind_dir_sensor_id = self.xenia_obs_db.sensorExists('wind_from_direction', 'degrees_true', platform_handle, 1)
+
+      end_date = start_date
+      begin_date = start_date - timedelta(hours=24)
+      try:
+        #(qc_level = %d OR qc_level IS NULL)
+        salinity_data = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.sensor_id == salinity_id)\
+          .filter(or_(multi_obs.qc_level == qaqcTestFlags.DATA_QUAL_GOOD, multi_obs.qc_level == None))\
+          .order_by(multi_obs.m_date).all()
+
+        water_temp_data  = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.sensor_id == water_temp_id)\
+          .filter(or_(multi_obs.qc_level == qaqcTestFlags.DATA_QUAL_GOOD, multi_obs.qc_level == None))\
+          .order_by(multi_obs.m_date).all()
+
+        wind_speed_data = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.sensor_id == wind_spd_sensor_id)\
+          .order_by(multi_obs.m_date).all()
+
+        wind_dir_data = self.xenia_obs_db.session.query(multi_obs)\
+          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
+          .filter(multi_obs.sensor_id == wind_dir_sensor_id)\
+          .order_by(multi_obs.m_date).all()
+      except Exception, e:
+        self.logger.exception(e)
+      else:
+        if len(salinity_data):
+          wq_tests_data['sun2_salinity'] = sum(sal.m_value for sal in salinity_data) / len(salinity_data)
+          self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_salinity'], len(salinity_data)))
+        else:
+          self.logger.error("Platform: %s returned no salinity records." % (platform_handle))
+
+
+        if len(water_temp_data):
+          wq_tests_data['sun2_water_temp'] = sum(temp.m_value for temp in water_temp_data) / len(water_temp_data)
+          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_water_temp'], len(water_temp_data)))
+        else:
+          self.logger.error("Platform: %s returned no water_temperature records." % (platform_handle))
+
+        wind_dir_tuples = []
+        direction_tuples = []
+        scalar_speed_avg = None
+        speed_count = 0
+        for wind_speed_row in wind_speed_data:
+          for wind_dir_row in wind_dir_data:
+            if wind_speed_row.m_date == wind_dir_row.m_date:
+              self.logger.debug("Building tuple for Speed(%s): %f Dir(%s): %f" % (wind_speed_row.m_date, wind_speed_row.m_value, wind_dir_row.m_date, wind_dir_row.m_value))
+              if scalar_speed_avg is None:
+                scalar_speed_avg = 0
+              scalar_speed_avg += wind_speed_row.m_value
+              speed_count += 1
+              #Vector using both speed and direction.
+              wind_dir_tuples.append((wind_speed_row.m_value, wind_dir_row.m_value))
+              #Vector with speed as constant(1), and direction.
+              direction_tuples.append((1, wind_dir_row.m_value))
+              break
+
+        if len(wind_dir_tuples):
+          avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
+          self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                            avg_speed_dir_components[0],
+                                                                                            avg_speed_dir_components[0] * meters_per_second_to_mph,
+                                                                                            avg_speed_dir_components[1]))
+
+          #Unity components, just direction with speeds all 1.
+          avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
+          scalar_speed_avg = scalar_speed_avg / speed_count
+          wq_tests_data['sun2_wind_speed'] = scalar_speed_avg * meters_per_second_to_mph
+          wq_tests_data['sun2_wind_dir_val'] = avg_dir_components[1]
+          self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                                   scalar_speed_avg,
+                                                                                                   scalar_speed_avg * meters_per_second_to_mph,
+                                                                                                   avg_dir_components[1]))
+        else:
+          self.logger.error("Platform: %s returned no wind speed/direction data." % (platform_handle))
+
+      self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
+
+      return
+  """
   def get_nos_data(self, start_date, wq_tests_data):
       platform_handle = 'nos.8661070.WL'
 
@@ -1004,108 +1514,6 @@ class mb_wq_model_data(wq_data):
 
     if self.logger:
       self.logger.debug("Finished retrieving nexrad data datetime: %s" % (start_date.strftime('%Y-%m-%d %H:%M:%S')))
-
-  def get_sun2_data(self, start_date, wq_tests_data):
-      platform_handle = 'carocoops.SUN2.buoy'
-
-      self.logger.debug("Start retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
-
-      #Get the sensor id for salinity
-      salinity_id = self.xenia_obs_db.sensorExists('salinity', 'psu', platform_handle, 1)
-
-      #Water temp id.
-      water_temp_id = self.xenia_obs_db.sensorExists('water_temperature', 'celsius', platform_handle, 1)
-
-      #Get the sensor id for wind speed and wind direction
-      wind_spd_sensor_id = self.xenia_obs_db.sensorExists('wind_speed', 'm_s-1', platform_handle, 1)
-      wind_dir_sensor_id = self.xenia_obs_db.sensorExists('wind_from_direction', 'degrees_true', platform_handle, 1)
-
-      end_date = start_date
-      begin_date = start_date - timedelta(hours=24)
-      try:
-        #(qc_level = %d OR qc_level IS NULL)
-        salinity_data = self.xenia_obs_db.session.query(multi_obs)\
-          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
-          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
-          .filter(multi_obs.sensor_id == salinity_id)\
-          .filter(or_(multi_obs.qc_level == qaqcTestFlags.DATA_QUAL_GOOD, multi_obs.qc_level == None))\
-          .order_by(multi_obs.m_date).all()
-
-        water_temp_data  = self.xenia_obs_db.session.query(multi_obs)\
-          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
-          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
-          .filter(multi_obs.sensor_id == water_temp_id)\
-          .filter(or_(multi_obs.qc_level == qaqcTestFlags.DATA_QUAL_GOOD, multi_obs.qc_level == None))\
-          .order_by(multi_obs.m_date).all()
-
-        wind_speed_data = self.xenia_obs_db.session.query(multi_obs)\
-          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
-          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
-          .filter(multi_obs.sensor_id == wind_spd_sensor_id)\
-          .order_by(multi_obs.m_date).all()
-
-        wind_dir_data = self.xenia_obs_db.session.query(multi_obs)\
-          .filter(multi_obs.m_date >= begin_date.strftime('%Y-%m-%dT%H:%M:%S'))\
-          .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
-          .filter(multi_obs.sensor_id == wind_dir_sensor_id)\
-          .order_by(multi_obs.m_date).all()
-      except Exception, e:
-        self.logger.exception(e)
-      else:
-        if len(salinity_data):
-          wq_tests_data['sun2_salinity'] = sum(sal.m_value for sal in salinity_data) / len(salinity_data)
-          self.logger.debug("Platform: %s Avg Salinity: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_salinity'], len(salinity_data)))
-        else:
-          self.logger.error("Platform: %s returned no salinity records." % (platform_handle))
-
-
-        if len(water_temp_data):
-          wq_tests_data['sun2_water_temp'] = sum(temp.m_value for temp in water_temp_data) / len(water_temp_data)
-          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['sun2_water_temp'], len(water_temp_data)))
-        else:
-          self.logger.error("Platform: %s returned no water_temperature records." % (platform_handle))
-
-        wind_dir_tuples = []
-        direction_tuples = []
-        scalar_speed_avg = None
-        speed_count = 0
-        for wind_speed_row in wind_speed_data:
-          for wind_dir_row in wind_dir_data:
-            if wind_speed_row.m_date == wind_dir_row.m_date:
-              self.logger.debug("Building tuple for Speed(%s): %f Dir(%s): %f" % (wind_speed_row.m_date, wind_speed_row.m_value, wind_dir_row.m_date, wind_dir_row.m_value))
-              if scalar_speed_avg is None:
-                scalar_speed_avg = 0
-              scalar_speed_avg += wind_speed_row.m_value
-              speed_count += 1
-              #Vector using both speed and direction.
-              wind_dir_tuples.append((wind_speed_row.m_value, wind_dir_row.m_value))
-              #Vector with speed as constant(1), and direction.
-              direction_tuples.append((1, wind_dir_row.m_value))
-              break
-
-        if len(wind_dir_tuples):
-          avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
-          self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
-                                                                                            avg_speed_dir_components[0],
-                                                                                            avg_speed_dir_components[0] * meters_per_second_to_mph,
-                                                                                            avg_speed_dir_components[1]))
-
-          #Unity components, just direction with speeds all 1.
-          avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
-          scalar_speed_avg = scalar_speed_avg / speed_count
-          wq_tests_data['sun2_wind_speed'] = scalar_speed_avg * meters_per_second_to_mph
-          wq_tests_data['sun2_wind_dir_val'] = avg_dir_components[1]
-          self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
-                                                                                                   scalar_speed_avg,
-                                                                                                   scalar_speed_avg * meters_per_second_to_mph,
-                                                                                                   avg_dir_components[1]))
-        else:
-          self.logger.error("Platform: %s returned no wind speed/direction data." % (platform_handle))
-
-      self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
-
-      return
-
   def get_tide_data(self, start_date, wq_tests_data):
     if self.logger:
       self.logger.debug("Start retrieving tide data for station: %s date: %s" % (self.tide_station, start_date))
