@@ -29,6 +29,7 @@ import requests
 import socket 
 import datetime
 from pytz import timezone
+from dateutil import parser as du_parser
 
 import csv
 from decimal import *
@@ -250,7 +251,12 @@ class waterQualityAdvisory(object):
   Return:
     None
   """
-  def processData(self, stationGeoJsonFile, jsonOutputFilepath, historyWQ, dhec_rest_url):
+  def processData(self, **kwargs):
+    stationGeoJsonFile = kwargs['geo_json_file']
+    jsonOutputFilepath  = kwargs['json_file_path']
+    historyWQ = kwargs['historical_wq']
+    dhec_rest_url = kwargs['dhec_url']
+    sample_data_post_url = kwargs.get('post_data_url', None)
     if(self.logger):
       self.logger.info("Begin data processing.")
 
@@ -273,6 +279,17 @@ class waterQualityAdvisory(object):
               self.logger.debug("Station: %s no results from webquery, adding in historical." % (stationName))
             if(stationName in historyWQ):
               resultsData[stationName]['results'] = historyWQ[stationName]
+          if sample_data_post_url is not None:
+            station_nfo = resultsData[stationName]['results']
+            for result in station_nfo:
+              sub_dict = {'station_name': stationName,
+                                             'date': result['date'],
+                                             'value': result['value']}
+              url = sample_data_post_url.format(**sub_dict)
+              try:
+                requests.post(url)
+              except Exception as e:
+                self.logger.exception(e)
       #DWR 2013-07-09
       #No result at all.
       else:
@@ -361,6 +378,7 @@ class waterQualityAdvisory(object):
   #Implement function to use the SOAP response.
   def __scrapeResults(self, stationNfoList):
     results = {}
+    utc_tz = timezone('UTC')
     if self.logger:
       logging.getLogger('suds.client').setLevel(logging.DEBUG)
       self.logger.info("SOAP request for beach data.")
@@ -405,7 +423,10 @@ class waterQualityAdvisory(object):
               #2014-05-13T00:00:00-04:00
               #date_parts = beachTable.START_DATE[0].split('T')
               date_parts = beachTable.SamplingDate[0].split('T')
-              data['date'] = date_parts[0]
+              #Get date and time with TZ
+              utc_date = du_parser.parse(beachTable.SamplingDate[0]).astimezone(utc_tz)
+              #data['date'] = date_parts[0]
+              data['date'] = utc_date.strftime('%Y-%m-%dT%H:%M:%SZ')
               data['value'] = beachTable.ETCOC[0]
               #data['sign'] = beachTable.ETCOC_MOD[0]
               results[data['station']]['results'].append(data)
@@ -554,6 +575,8 @@ def main():
     stationWQHistoryFile = configFile.get('stationData', 'stationWQHistoryFile')
 
     dhec_rest_url = configFile.get('websettings', 'dhec_rest_url')
+
+    sample_data_post_url = configFile.get('sample_data_rest', 'url')
   except ConfigParser.Error, e:
     if(logger):
       logger.exception(e)
@@ -596,7 +619,11 @@ def main():
         historyWQ = geojson.load(historyWQFile)
         
         #advisoryObj.processData(stationList, jsonFilepath, historyWQ, dhec_rest_url)
-        advisoryObj.processData(stationGeoJsonFile, jsonFilepath, historyWQ, dhec_rest_url)
+        advisoryObj.processData(geo_json_file=stationGeoJsonFile,
+                                json_file_path=jsonFilepath,
+                                historical_wq=historyWQ,
+                                dhec_url=dhec_rest_url,
+                                post_data_url=sample_data_post_url)
     except IOError,e:
       if(logger):
         logger.exception(e)
