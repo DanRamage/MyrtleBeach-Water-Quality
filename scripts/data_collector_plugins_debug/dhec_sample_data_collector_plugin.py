@@ -59,6 +59,9 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
       stationWQHistoryFile = configFile.get('stationData', 'stationWQHistoryFile')
 
       dhec_rest_url = configFile.get('websettings', 'dhec_rest_url')
+
+      sample_data_post_url = configFile.get('sample_data_rest', 'url')
+
     except ConfigParser.Error, e:
       if(logger):
         logger.exception(e)
@@ -70,7 +73,13 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
         historyWQFile = open(stationWQHistoryFile, "r")
         historyWQ = geojson.load(historyWQFile)
 
-        advisoryObj.processData(stationGeoJsonFile, jsonFilepath, historyWQ, dhec_rest_url)
+        #advisoryObj.processData(stationGeoJsonFile, jsonFilepath, historyWQ, dhec_rest_url)
+        advisoryObj.processData(
+                                geo_json_file = stationGeoJsonFile,
+                                json_file_path = jsonFilepath,
+                                historical_wq = historyWQ,
+                                dhec_url = dhec_rest_url,
+                                post_data_url = sample_data_post_url)
       except (IOError,Exception) as e:
         if(logger):
           logger.exception(e)
