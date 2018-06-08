@@ -11,9 +11,9 @@ from dhecBeachAdvisoryReader import waterQualityAdvisory
 class dhec_sample_data_collector_plugin(data_collector_plugin):
 
   def initialize_plugin(self, **kwargs):
-    data_collector_plugin.initialize_plugin(self, **kwargs)
+    #data_collector_plugin.initialize_plugin(self, **kwargs)
     try:
-      logger = logging.getLogger(self.__class__.__name__)
+      #logger = logging.getLogger(self.__class__.__name__)
       plugin_details = kwargs['details']
       self.ini_file = plugin_details.get('Settings', 'ini_file')
       return True
@@ -25,10 +25,12 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
     try:
       configFile = ConfigParser.RawConfigParser()
       configFile.read(self.ini_file)
-
-      self.logging_client_cfg['disable_existing_loggers'] = True
-      logging.config.dictConfig(self.logging_client_cfg)
-      logger = logging.getLogger(self.__class__.__name__)
+      log_conf = configFile.get('logging', 'scraperConfigFile')
+      #self.logging_client_cfg['disable_existing_loggers'] = True
+      #logging.config.dictConfig(self.logging_client_cfg)
+      #logger = logging.getLogger(self.__class__.__name__)
+      logging.config.fileConfig(log_conf)
+      logger = logging.getLogger(__name__)
       logger.debug("run started.")
 
       """
