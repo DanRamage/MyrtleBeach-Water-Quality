@@ -11,7 +11,7 @@ from dhecBeachAdvisoryReader import waterQualityAdvisory
 class dhec_sample_data_collector_plugin(data_collector_plugin):
 
   def initialize_plugin(self, **kwargs):
-    #data_collector_plugin.initialize_plugin(self, **kwargs)
+    data_collector_plugin.initialize_plugin(self, **kwargs)
     try:
       logger = logging.getLogger(self.__class__.__name__)
       plugin_details = kwargs['details']
