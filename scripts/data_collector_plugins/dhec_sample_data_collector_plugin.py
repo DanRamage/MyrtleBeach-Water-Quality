@@ -25,12 +25,10 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
     try:
       configFile = ConfigParser.RawConfigParser()
       configFile.read(self.ini_file)
-      log_conf = configFile.get('logging', 'scraperConfigFile')
-      #self.logging_client_cfg['disable_existing_loggers'] = True
-      #logging.config.dictConfig(self.logging_client_cfg)
-      #logger = logging.getLogger(self.__class__.__name__)
-      logging.config.fileConfig(log_conf)
-      logger = logging.getLogger(__name__)
+
+      self.logging_client_cfg['disable_existing_loggers'] = True
+      logging.config.dictConfig(self.logging_client_cfg)
+      logger = logging.getLogger(self.__class__.__name__)
       logger.debug("run started.")
 
       """
