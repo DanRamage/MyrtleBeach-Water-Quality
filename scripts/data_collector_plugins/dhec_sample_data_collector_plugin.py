@@ -88,3 +88,5 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
           logger.exception(e)
 
     return
+  def finalize(self):
+    return
