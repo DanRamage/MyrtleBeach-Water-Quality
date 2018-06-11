@@ -287,7 +287,9 @@ class waterQualityAdvisory(object):
                                              'value': result['value']}
               url = sample_data_post_url.format(**sub_dict)
               try:
+                self.logger.debug("POSTing data to %s" % (url))
                 requests.post(url)
+                self.logger.debug("POSTed data.")
               except Exception as e:
                 self.logger.exception(e)
       #DWR 2013-07-09
@@ -623,7 +625,7 @@ def main():
                                 json_file_path=jsonFilepath,
                                 historical_wq=historyWQ,
                                 dhec_url=dhec_rest_url,
-                                post_data_url=sample_data_post_url)
+                                post_data_url=None)
     except IOError,e:
       if(logger):
         logger.exception(e)
