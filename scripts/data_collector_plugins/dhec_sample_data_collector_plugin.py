@@ -46,6 +46,7 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
       traceback.print_exc(e)
       sys.exit(-1)
     try:
+      logger.debug("Getting config params.")
       #Base URL to the page that house an individual stations results.
       baseUrl = configFile.get('websettings', 'baseAdvisoryPageUrl')
 
@@ -59,9 +60,9 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
       stationWQHistoryFile = configFile.get('stationData', 'stationWQHistoryFile')
 
       dhec_rest_url = configFile.get('websettings', 'dhec_rest_url')
+      logger.debug("Finished getting config params.")
     except ConfigParser.Error, e:
-      if(logger):
-        logger.exception(e)
+      logger.exception(e)
 
     else:
       try:
