@@ -66,16 +66,18 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
 
     else:
       try:
+        logger.debug("Creating dhec sample query object.")
         advisoryObj = waterQualityAdvisory(baseUrl, True)
         #See if we have a historical WQ file, if so let's use that as well.
+        logger.debug("Opening historical json file: %s." % (stationWQHistoryFile))
         historyWQFile = open(stationWQHistoryFile, "r")
+        logger.debug("Loading historical json file: %s." % (stationWQHistoryFile))
         historyWQ = geojson.load(historyWQFile)
 
         logger.debug("Beginning SOAP query.")
         advisoryObj.processData(stationGeoJsonFile, jsonFilepath, historyWQ, dhec_rest_url)
         logger.debug("Finished SOAP query.")
       except (IOError,Exception) as e:
-        if(logger):
-          logger.exception(e)
+        logger.exception(e)
 
     return
