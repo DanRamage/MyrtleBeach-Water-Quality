@@ -70,7 +70,9 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
         historyWQFile = open(stationWQHistoryFile, "r")
         historyWQ = geojson.load(historyWQFile)
 
+        logger.debug("Beginning SOAP query.")
         advisoryObj.processData(stationGeoJsonFile, jsonFilepath, historyWQ, dhec_rest_url)
+        logger.debug("Finished SOAP query.")
       except (IOError,Exception) as e:
         if(logger):
           logger.exception(e)
