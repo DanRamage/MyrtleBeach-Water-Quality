@@ -81,7 +81,11 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
         logger.debug("Opening historical json file: %s." % (stationWQHistoryFile))
         historyWQFile = open(stationWQHistoryFile, "r")
         logger.debug("Loading historical json file: %s." % (stationWQHistoryFile))
-        historyWQ = geojson.load(historyWQFile)
+        historyWQAll = geojson.load(historyWQFile)
+        #Now cleanup and only have historical data from sites we do predictions on.
+        historyWQ = {}
+        for site in mb_sites:
+          historyWQ[site.name] = historyWQAll[site.name]
 
         logger.debug("Beginning SOAP query.")
         advisoryObj.processData(
