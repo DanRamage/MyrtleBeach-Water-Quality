@@ -7,6 +7,7 @@ import traceback
 import geojson
 
 from dhecBeachAdvisoryReader import waterQualityAdvisory
+from mb_wq_data import mb_sample_sites
 
 class dhec_sample_data_collector_plugin(data_collector_plugin):
 
@@ -59,17 +60,27 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
       stationWQHistoryFile = configFile.get('stationData', 'stationWQHistoryFile')
 
       dhec_rest_url = configFile.get('websettings', 'dhec_rest_url')
+
+      boundaries_location_file = configFile.get('boundaries_settings', 'boundaries_file')
+      sites_location_file = configFile.get('boundaries_settings', 'sample_sites')
+
     except ConfigParser.Error, e:
       if(logger):
         logger.exception(e)
 
     else:
       try:
+        mb_sites = mb_sample_sites()
+        mb_sites.load_sites(file_name=sites_location_file, boundary_file=boundaries_location_file)
+
         advisoryObj = waterQualityAdvisory(baseUrl, True)
         #See if we have a historical WQ file, if so let's use that as well.
         historyWQFile = open(stationWQHistoryFile, "r")
-        historyWQ = geojson.load(historyWQFile)
-
+        historyWQAll = geojson.load(historyWQFile)
+        #Now cleanup and only have historical data from sites we do predictions on.
+        historyWQ = {}
+        for site in mb_sites:
+          historyWQ[site.name] = historyWQAll[site.name]
         advisoryObj.processData(stationGeoJsonFile, jsonFilepath, historyWQ, dhec_rest_url)
       except (IOError,Exception) as e:
         if(logger):

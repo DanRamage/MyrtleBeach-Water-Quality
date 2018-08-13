@@ -7,6 +7,7 @@ import traceback
 import geojson
 
 from dhecBeachAdvisoryReader import waterQualityAdvisory
+from mb_wq_data import mb_sample_sites
 
 class dhec_sample_data_collector_plugin(data_collector_plugin):
 
@@ -46,7 +47,6 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
       traceback.print_exc(e)
       sys.exit(-1)
     try:
-      logger.debug("Getting config params.")
       #Base URL to the page that house an individual stations results.
       baseUrl = configFile.get('websettings', 'baseAdvisoryPageUrl')
 
@@ -60,29 +60,30 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
       stationWQHistoryFile = configFile.get('stationData', 'stationWQHistoryFile')
 
       dhec_rest_url = configFile.get('websettings', 'dhec_rest_url')
-      logger.debug("Finished getting config params.")
+
+      boundaries_location_file = configFile.get('boundaries_settings', 'boundaries_file')
+      sites_location_file = configFile.get('boundaries_settings', 'sample_sites')
+
     except ConfigParser.Error, e:
-      logger.exception(e)
+      if(logger):
+        logger.exception(e)
 
     else:
       try:
-        logger.debug("Creating dhec sample query object.")
+        mb_sites = mb_sample_sites()
+        mb_sites.load_sites(file_name=sites_location_file, boundary_file=boundaries_location_file)
+
         advisoryObj = waterQualityAdvisory(baseUrl, True)
         #See if we have a historical WQ file, if so let's use that as well.
-        logger.debug("Opening historical json file: %s." % (stationWQHistoryFile))
         historyWQFile = open(stationWQHistoryFile, "r")
-        logger.debug("Loading historical json file: %s." % (stationWQHistoryFile))
-        historyWQ = geojson.load(historyWQFile)
-
-        logger.debug("Beginning SOAP query.")
-        advisoryObj.processData(
-                                geo_json_file = stationGeoJsonFile,
-                                json_file_path = jsonFilepath,
-                                historical_wq = historyWQ,
-                                dhec_url = dhec_rest_url,
-                                post_data_url = None)
-        logger.debug("Finished SOAP query.")
+        historyWQAll = geojson.load(historyWQFile)
+        #Now cleanup and only have historical data from sites we do predictions on.
+        historyWQ = {}
+        for site in mb_sites:
+          historyWQ[site.name] = historyWQAll[site.name]
+        advisoryObj.processData(stationGeoJsonFile, jsonFilepath, historyWQ, dhec_rest_url)
       except (IOError,Exception) as e:
-        logger.exception(e)
+        if(logger):
+          logger.exception(e)
 
     return
