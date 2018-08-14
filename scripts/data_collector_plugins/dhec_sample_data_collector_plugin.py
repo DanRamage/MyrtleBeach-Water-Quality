@@ -93,7 +93,8 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
                                 json_file_path = jsonFilepath,
                                 historical_wq = historyWQ,
                                 dhec_url = dhec_rest_url,
-                                post_data_url = None)
+                                post_data_url = None,
+                                sampling_stations=mb_sites))
         logger.debug("Finished SOAP query.")
       except (IOError,Exception) as e:
         logger.exception(e)
