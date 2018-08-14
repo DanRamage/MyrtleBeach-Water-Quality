@@ -257,15 +257,31 @@ class waterQualityAdvisory(object):
     historyWQ = kwargs['historical_wq']
     dhec_rest_url = kwargs['dhec_url']
     sample_data_post_url = kwargs.get('post_data_url', None)
+    sampling_stations = kwargs.get('sampling_stations', None)
     if(self.logger):
       self.logger.info("Begin data processing.")
 
     self.logger.debug("Opening station metadata file: %s" % (stationGeoJsonFile))
-    stationNfoList = []
+    stationNfoList = {}
     try:
       with open(stationGeoJsonFile, "r") as stationDataFile:
         stationNfoList = geojson.load(stationDataFile)
-    except IOError as e:
+        features = stationNfoList['features']
+        #If we passed in a sampling stations object, let's only use the stations
+        #from that, pruning out everything else.
+        if sampling_stations is not None:
+          station_list = []
+          for station in sampling_stations:
+            station_list.append(station.name)
+          delete_list = []
+          for ndx, feature in enumerate(features):
+            if feature['id'] not in station_list:
+              delete_list.append(ndx)
+          if len(delete_list):
+            delete_list.sort(reverse=True)
+            for item in delete_list:
+              del features[item]
+    except (IOError, Exception) as e:
       self.logger.exception(e)
     else:
       dhec_rest_results = self.get_station_data_from_dhec(dhec_rest_url)

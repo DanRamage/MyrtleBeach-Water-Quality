@@ -47,6 +47,7 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
       traceback.print_exc(e)
       sys.exit(-1)
     try:
+      logger.debug("Getting config params.")
       #Base URL to the page that house an individual stations results.
       baseUrl = configFile.get('websettings', 'baseAdvisoryPageUrl')
 
@@ -64,6 +65,7 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
       boundaries_location_file = configFile.get('boundaries_settings', 'boundaries_file')
       sites_location_file = configFile.get('boundaries_settings', 'sample_sites')
 
+      logger.debug("Finished getting config params.")
     except ConfigParser.Error, e:
       if(logger):
         logger.exception(e)
@@ -73,17 +75,28 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
         mb_sites = mb_sample_sites()
         mb_sites.load_sites(file_name=sites_location_file, boundary_file=boundaries_location_file)
 
+        logger.debug("Creating dhec sample query object.")
         advisoryObj = waterQualityAdvisory(baseUrl, True)
         #See if we have a historical WQ file, if so let's use that as well.
+        logger.debug("Opening historical json file: %s." % (stationWQHistoryFile))
         historyWQFile = open(stationWQHistoryFile, "r")
+        logger.debug("Loading historical json file: %s." % (stationWQHistoryFile))
         historyWQAll = geojson.load(historyWQFile)
         #Now cleanup and only have historical data from sites we do predictions on.
         historyWQ = {}
         for site in mb_sites:
           historyWQ[site.name] = historyWQAll[site.name]
-        advisoryObj.processData(stationGeoJsonFile, jsonFilepath, historyWQ, dhec_rest_url)
+
+        logger.debug("Beginning SOAP query.")
+        advisoryObj.processData(
+                                geo_json_file = stationGeoJsonFile,
+                                json_file_path = jsonFilepath,
+                                historical_wq = historyWQ,
+                                dhec_url = dhec_rest_url,
+                                post_data_url = None,
+                                sampling_stations=mb_sites)
+        logger.debug("Finished SOAP query.")
       except (IOError,Exception) as e:
-        if(logger):
-          logger.exception(e)
+        logger.exception(e)
 
     return
