@@ -10,7 +10,8 @@ import time
 import optparse
 import ConfigParser
 from collections import OrderedDict
-import simplejson as json
+#import simplejson as json
+import json
 
 from yapsy.PluginManager import PluginManager
 
@@ -331,7 +332,7 @@ class mb_prediction_engine(wq_prediction_engine):
 
       data_collector_plugin_directories=config_file.get('data_collector_plugins', 'plugin_directories').split(',')
 
-      self.collect_data(data_collector_plugin_directories=data_collector_plugin_directories)
+      #self.collect_data(data_collector_plugin_directories=data_collector_plugin_directories)
 
 
       boundaries_location_file = config_file.get('boundaries_settings', 'boundaries_file')
