@@ -330,9 +330,11 @@ class mb_prediction_engine(wq_prediction_engine):
       config_file = ConfigParser.RawConfigParser()
       config_file.read(kwargs['config_file_name'])
 
-      data_collector_plugin_directories=config_file.get('data_collector_plugins', 'plugin_directories').split(',')
+      enable_data_collector_plugins = config_file.getboolean('data_collector_plugins', 'enable_plugins')
+      data_collector_plugin_directories = config_file.get('data_collector_plugins', 'plugin_directories').split(',')
 
-      #self.collect_data(data_collector_plugin_directories=data_collector_plugin_directories)
+      if enable_data_collector_plugins:
+        self.collect_data(data_collector_plugin_directories=data_collector_plugin_directories)
 
 
       boundaries_location_file = config_file.get('boundaries_settings', 'boundaries_file')
@@ -350,6 +352,7 @@ class mb_prediction_engine(wq_prediction_engine):
       xenia_obs_db_password = xenia_obs_db_config_file.get('xenia_observation_database', 'password')
       xenia_obs_db_name = xenia_obs_db_config_file.get('xenia_observation_database', 'database')
 
+      enable_output_plugins = config_file.getboolean('output_plugins', 'enable_plugins')
       output_plugin_dirs=config_file.get('output_plugins', 'plugin_directories').split(',')
     except (ConfigParser.Error, Exception) as e:
       self.logger.exception(e)
@@ -430,10 +433,11 @@ class mb_prediction_engine(wq_prediction_engine):
 
       self.logger.debug("Total time to execute all sites models: %f ms" % (total_time * 1000))
       try:
-        self.output_results(output_plugin_directories=output_plugin_dirs,
-                                site_model_ensemble=site_model_ensemble,
-                                prediction_date=kwargs['begin_date'],
-                                prediction_run_date=prediction_testrun_date)
+        if enable_output_plugins:
+          self.output_results(output_plugin_directories=output_plugin_dirs,
+                                  site_model_ensemble=site_model_ensemble,
+                                  prediction_date=kwargs['begin_date'],
+                                  prediction_run_date=prediction_testrun_date)
       except Exception as e:
         self.logger.exception(e)
     return
