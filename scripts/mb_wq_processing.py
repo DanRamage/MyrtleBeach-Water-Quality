@@ -5,7 +5,11 @@ import logging.config
 from datetime import datetime, timedelta
 from pytz import timezone
 import optparse
-import ConfigParser
+if sys.version_info[0] < 3:
+  import ConfigParser
+else:
+  import configparser as ConfigParser
+
 import csv
 
 from collections import OrderedDict

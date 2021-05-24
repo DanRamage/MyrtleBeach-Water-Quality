@@ -5,7 +5,10 @@ import logging.config
 import csv
 import glob
 import optparse
-import ConfigParser
+if sys.version_info[0] < 3:
+  import ConfigParser
+else:
+  import configparser as ConfigParser
 import traceback
 from openpyxl import load_workbook
 from mb_wq_data import mb_sample_sites
