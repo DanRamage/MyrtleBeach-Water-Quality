@@ -8,12 +8,17 @@ from pytz import timezone
 import traceback
 import time
 import optparse
-import ConfigParser
+if sys.version_info[0] < 3:
+  import ConfigParser
+else:
+  import configparser as ConfigParser
 from collections import OrderedDict
 #import simplejson as json
 import json
+from data_collector_plugin import data_collector_plugin
 
 from yapsy.PluginManager import PluginManager
+from multiprocessing import Queue
 
 from wq_prediction_tests import wqEquations
 from enterococcus_wq_test import EnterococcusPredictionTest,EnterococcusPredictionTestEx
@@ -42,7 +47,7 @@ def build_test_objects(config_file, site_name):
     test_config_file = config_file.get(site_name, 'prediction_config')
     entero_lo_limit = config_file.getint('entero_limits', 'limit_lo')
     entero_hi_limit = config_file.getint('entero_limits', 'limit_hi')
-  except ConfigParser.Error, e:
+  except ConfigParser.Error as e:
     if logger:
       logger.exception(e)
   else:
@@ -85,7 +90,7 @@ def check_site_date_for_sampling_date(site_name, test_date, output_settings_ini,
     config_file = ConfigParser.RawConfigParser()
     config_file.read(output_settings_ini)
     station_results_directory = config_file.get('output', 'station_results_directory')
-  except ConfigParser.Error, e:
+  except ConfigParser.Error as e:
     if logger:
       logger.exception(e)
   else:
@@ -104,7 +109,7 @@ def check_site_date_for_sampling_date(site_name, test_date, output_settings_ini,
             else:
               entero_value = result['value'][0]
             break
-    except IOError, e:
+    except IOError as e:
       if logger:
         logger.exception(e)
 
@@ -142,7 +147,7 @@ def run_wq_models(**kwargs):
     output_settings_ini = config_file.get('password_protected_configs', 'settings_ini')
 
     output_plugin_dirs=config_file.get('output_plugins', 'plugin_directories').split(',')
-  except ConfigParser.Error, e:
+  except ConfigParser.Error as e:
     if logger:
       logger.exception(e)
   else:
@@ -175,7 +180,7 @@ def run_wq_models(**kwargs):
         #Get the station specific tide stations
         tide_station = config_file.get(site.name, 'tide_station')
         #We use the virtual tide sites as there no stations near the sites.
-      except ConfigParser.Error, e:
+      except ConfigParser.Error as e:
         if logger:
           logger.exception(e)
       else:
@@ -214,7 +219,7 @@ def run_wq_models(**kwargs):
           site_model_ensemble.append({'metadata': site,
                                       'models': site_equations,
                                       'entero_value': None})
-        except Exception,e:
+        except Exception as e:
           if logger:
             logger.exception(e)
 
@@ -277,7 +282,7 @@ def output_results(**kwargs):
     results_out = results_exporter(True)
     results_out.load_configuration(kwargs['config_file_name'])
     results_out.output(record)
-  except Exception, e:
+  except Exception as e:
     if logger:
       logger.exception(e)
 
@@ -300,7 +305,7 @@ class mb_prediction_engine(wq_prediction_engine):
       test_config_file = config_file.get(site_name, 'prediction_config')
       entero_lo_limit = config_file.getint('entero_limits', 'limit_lo')
       entero_hi_limit = config_file.getint('entero_limits', 'limit_hi')
-    except ConfigParser.Error, e:
+    except ConfigParser.Error as e:
         self.logger.exception(e)
     else:
       self.logger.debug("Site: %s Model Config File: %s" % (site_name, test_config_file))
@@ -428,7 +433,7 @@ class mb_prediction_engine(wq_prediction_engine):
                                           'models': site_equations,
                                           'entero_value': None,
                                           'statistics': entero_stats})
-          except Exception,e:
+          except Exception as e:
             self.logger.exception(e)
 
       self.logger.debug("Total time to execute all sites models: %f ms" % (total_time * 1000))
@@ -441,6 +446,49 @@ class mb_prediction_engine(wq_prediction_engine):
       except Exception as e:
         self.logger.exception(e)
     return
+
+  def collect_data(self, **kwargs):
+    self.logger.info("Begin collect_data")
+    try:
+      simplePluginManager = PluginManager()
+      yapsy_log = logging.getLogger('yapsy')
+      yapsy_log.setLevel(logging.DEBUG)
+      yapsy_log.disabled = False
+      simplePluginManager.setCategoriesFilter({
+         "DataCollector": data_collector_plugin
+         })
+
+      # Tell it the default place(s) where to find plugins
+      self.logger.debug("Plugin directories: %s" % (kwargs['data_collector_plugin_directories']))
+      simplePluginManager.setPluginPlaces(kwargs['data_collector_plugin_directories'])
+
+      simplePluginManager.collectPlugins()
+
+      output_queue = Queue()
+      plugin_cnt = 0
+      plugin_start_time = time.time()
+      for plugin in simplePluginManager.getAllPlugins():
+        self.logger.info("Starting plugin: %s" % (plugin.name))
+        if plugin.plugin_object.initialize_plugin(details=plugin.details,
+                                                  queue=output_queue):
+          plugin.plugin_object.start()
+        else:
+          self.logger.error("Failed to initialize plugin: %s" % (plugin.name))
+        plugin_cnt += 1
+
+      #Wait for the plugings to finish up.
+      self.logger.info("Waiting for %d plugins to complete." % (plugin_cnt))
+      for plugin in simplePluginManager.getAllPlugins():
+        plugin.plugin_object.join()
+        plugin.plugin_object.finalize()
+      while not output_queue.empty():
+        results = output_queue.get()
+        if results[0] == data_result_types.MODEL_DATA_TYPE:
+          self.site_data = results[1]
+
+      self.logger.info("%d Plugins completed in %f seconds" % (plugin_cnt, time.time() - plugin_start_time))
+    except Exception as e:
+      self.logger.exception(e)
 
 def main():
   parser = optparse.OptionParser()
@@ -468,7 +516,7 @@ def main():
       logger.info("Log file opened.")
       use_logging = True
 
-  except ConfigParser.Error, e:
+  except ConfigParser.Error as e:
     traceback.print_exc(e)
     sys.exit(-1)
   else:
@@ -485,7 +533,7 @@ def main():
           #Convert to UTC
           begin_date = est.astimezone(timezone('UTC'))
           dates_to_process.append(begin_date)
-      except Exception,e:
+      except Exception as e:
         if logger:
           logger.exception(e)
     else:
@@ -504,7 +552,7 @@ def main():
                         config_file_name=options.config_file)
         #run_wq_models(begin_date=process_date,
         #              config_file_name=options.config_file)
-    except Exception, e:
+    except Exception as e:
       logger.exception(e)
 
   if logger:

@@ -7,13 +7,16 @@ from datetime import datetime, timedelta
 from pytz import timezone
 import logging.config
 import optparse
-import ConfigParser
+import configparser as ConfigParser
 
 from suds.client import Client
 from suds.xsd.doctor import Import, ImportDoctor
 
 from mb_wq_data import mb_sample_sites
 from search_utils import contains
+
+from dhecBeachAdvisoryReader import waterQualityAdvisory
+
 """
 Function: __scrapeResults
 Purpose: This is the function that loops through the station list, queries the webpage for the results creating the individual
@@ -31,10 +34,21 @@ def query_sample_data(data_dict, year, url, schema_url, sample_sites):
     logging.getLogger('suds.client').setLevel(logging.DEBUG)
     logger.info("SOAP request for beach data.")
   try:
+    '''
     #schema_url = "http://gis.dhec.sc.gov/beachservice/beachservice.asmx?schema=beach"
     schema_import = Import(schema_url)
     schema_doctor = ImportDoctor(schema_import)
 
+    soap_client = Client(url=url, doctor=schema_doctor)
+    logger.debug("Client: %s" % (soap_client))
+    logger.debug("SOAP GetBeachData request for year: %d" % (year.year))
+    response = soap_client.service.GetBeachData(year=year.year)
+    '''
+    schema_url = "http://gis.dhec.sc.gov/beachservice/beachservice.asmx?schema=beach"
+    schema_import = Import(schema_url)
+    schema_doctor = ImportDoctor(schema_import)
+
+    # soap_client = Client(url=self.baseUrl, doctor=schema_doctor)
     soap_client = Client(url=url, doctor=schema_doctor)
     logger.debug("Client: %s" % (soap_client))
     logger.debug("SOAP GetBeachData request for year: %d" % (year.year))
@@ -67,7 +81,7 @@ def query_sample_data(data_dict, year, url, schema_url, sample_sites):
               data['date'] = date_rec.strftime('%Y-%m-%d %H:%M:%S')
               data['value'] = beachTable.ETCOC[0]
               data_dict[data['station']]['results'].append(data)
-  except Exception, e:
+  except Exception as e:
     if logger:
       logger.exception(e)
     return False
@@ -110,15 +124,17 @@ def main():
 
     boundaries_location_file = config_file.get('boundaries_settings', 'boundaries_file')
     sites_location_file = config_file.get('boundaries_settings', 'sample_sites')
+    dhec_rest_url = config_file.get('dhec_soap_service', 'dhec_rest_url')
   except ConfigParser.Error as e:
     if logger:
       logger.exception(e)
   else:
-    mb_sites = mb_sample_sites(True)
+    mb_sites = mb_sample_sites()
     mb_sites.load_sites(file_name=sites_location_file, boundary_file=boundaries_location_file)
 
     dates = options.year_list.split(',')
     sample_data = get_historical_samples(dates, mb_sites, schema_url, base_url)
+
 
     complete_file = "%s.csv" % (os.path.join(options.out_dir, 'etcoc_all_stations'))
     if logger:

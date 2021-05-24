@@ -175,7 +175,7 @@ def main():
   try:
     boundaries_location_file = config_file.get('boundaries_settings', 'boundaries_file')
     sites_location_file = config_file.get('boundaries_settings', 'sample_sites')
-  except ConfigParser.Error,e:
+  except ConfigParser.Error as e:
     if logger:
       logger.exception(e)
   else:

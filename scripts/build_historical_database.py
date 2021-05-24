@@ -4,19 +4,27 @@ import os
 
 import logging.config
 from datetime import datetime, timedelta
+from dateutil.relativedelta import *
 from pytz import timezone
 import requests
 import optparse
-import ConfigParser
+if sys.version_info[0] < 3:
+  import ConfigParser
+else:
+  import configparser as ConfigParser
 import csv
 import json
 from pyoos.collectors.coops.coops_sos import CoopsSos
-
+from xlrd import open_workbook,cellname
 
 
 from unitsConversion import uomconversionFunctions
 from wqDatabase import wqDB
 from build_tide_file import create_tide_data_file_mp
+
+from xeniaSQLiteAlchemy import xeniaAlchemy as sl_xeniaAlchemy, multi_obs as sl_multi_obs, platform as sl_platform
+
+from xenia_obs_map import obs_map, json_obs_map
 
 
 platform_metadata = {
@@ -329,13 +337,113 @@ pier_obs_to_xenia = {
 pier_met_sensors = ["Air Temp","BP","RH","Wind Dir","Wind Speed","Rainfall","Air Temp","Barometric Pressure","Relative Humidity","Wind Direction","W_Air_temp(degF)","W_BP(inHg)","W_Rainfall(in)","W_Rel_humidity(%)","W_Wind_direction(deg)","W_Wind_speed(mph)"]
 
 
+def get_pier_data(**kwargs):
+  logger = logging.getLogger(__name__)
+  base_url = kwargs['base_url']
+  try:
+    request_params = {
+      'action': 'Excel',
+      'siteId': kwargs['site_id'],
+      'sensorId': kwargs['sensor_list'],
+      'startDate': kwargs['start_time'],
+      'endDate': kwargs['end_time'],
+      'displayType': 'StationSensor',
+      'predefFlag': 'false',
+      'enddateFlag': 'false',
+      'now': kwargs['now_time']
+    }
+    payload_str = "&".join("%s=%s" % (k, v) for k, v in request_params.items())
+    logger.debug("Request: %s params: %s" % (base_url, payload_str))
+    req = requests.get(base_url, params=payload_str)
+    process_records = False
+    if req.status_code == 200:
+      logger.debug("Request successful, saving to file: %s" % (kwargs['dest_file']))
+      with open(kwargs['dest_file'], 'wb') as f:
+        for chunk in req.iter_content(1024):
+          f.write(chunk)
+        return True
+    else:
+      logger.error("Request failed.")
+  except Exception as e:
+    logger.exception(e)
+  return False
+
+def process_pier_file(file_name, units_convereter, platform_handle, obs_mapping, db):
+  logger = logging.getLogger(__name__)
+
+  logger.debug("Opening file: %s" % (file_name))
+  wb = open_workbook(filename=file_name)
+  sheet = wb.sheet_by_index(0)
+  # Get platform info for lat/long
+  # plat_rec = db_obj.session.query(platform) \
+  #  .filter(platform.platform_handle == platform_handle) \
+  #  .one()
+  latitude = platform_metadata[platform_handle]['latitude']
+  longitude = platform_metadata[platform_handle]['longitude']
+  row_entry_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+  for row_index in range(sheet.nrows):
+    try:
+      if row_index > 0:
+        # HEader row, add the column index so we can lookup the obs in the worksheet.
+        if row_index == 1:
+          for col_index in range(sheet.ncols):
+            field_name = sheet.cell(row_index, col_index).value
+            obs_rec = obs_mapping.get_rec_from_source_name(field_name)
+            if obs_rec is not None:
+              obs_rec.source_index = col_index
+        else:
+          # Build the database records.
+          m_date_rec = obs_mapping.get_date_field()
+          for obs_rec in obs_mapping:
+            # Skip the date, not a true obs.
+            if obs_rec.target_obs != 'm_date':
+              try:
+                m_date = sheet.cell(row_index, m_date_rec.source_index).value
+                value = float(sheet.cell(row_index, obs_rec.source_index).value)
+                if obs_rec.target_uom != obs_rec.source_uom:
+                  value = units_convereter.measurementConvert(value, obs_rec.source_uom, obs_rec.target_uom)
+                db_rec = sl_multi_obs(row_entry_date=row_entry_date,
+                                      platform_handle=platform_handle,
+                                      sensor_id=(obs_rec.sensor_id),
+                                      m_type_id=(obs_rec.m_type_id),
+                                      m_date=m_date,
+                                      m_lon=longitude,
+                                      m_lat=latitude,
+                                      m_value=value
+                                      )
+
+                logger.debug("%s Adding m_date: %s obs(%d): %s(%s): %f" % \
+                             (platform_handle,
+                              db_rec.m_date,
+                              db_rec.sensor_id,
+                              obs_rec.target_obs,
+                              obs_rec.target_uom,
+                              db_rec.m_value))
+                db.addRec(db_rec, True)
+
+                # input_queue.put(db_rec)
+              except ValueError as e:
+                logger.error("%s m_date: %s obs(%d): %s(%s) no value" % \
+                             (platform_handle,
+                              m_date,
+                              obs_rec.sensor_id,
+                              obs_rec.target_obs,
+                              obs_rec.target_uom
+                              ))
+              except Exception as e:
+                logger.exception(e)
+    except Exception as e:
+      logger.exception(e)
+
+
 def process_pier_files(platform_name,
-                      file_name,
+                       start_date,
+                       end_date,
                        start_data_row,
                        header_row,
                        units_convereter,
-                       xenia_db,
-                       unique_dates):
+                       unique_dates,
+                       ini_file):
 
   logger = logging.getLogger(__name__)
   obs_keys = pier_obs_to_xenia.keys()
@@ -343,6 +451,69 @@ def process_pier_files(platform_name,
   row_entry_date = datetime.now()
   eastern_tz = timezone('US/Eastern')
   utc_tz = timezone('UTC')
+
+  config_file = ConfigParser.RawConfigParser()
+  config_file.read(ini_file)
+  platfrom_parts = platform_name.split('.')
+  json_obs_file = config_file.get(platfrom_parts[1], "obs_mapping_file")
+  site_id = config_file.get(platfrom_parts[1], 'site_id')
+  sensor_list = config_file.get(platfrom_parts[1], 'sensor_ids')
+  platform_handle = config_file.get(platfrom_parts[1], 'platform_handle')
+  file_directory = config_file.get(platfrom_parts[1], 'file_directory')
+  base_url = config_file.get(platfrom_parts[1], 'base_url')
+  database_filename = config_file.get('database', 'name')
+
+  db = sl_xeniaAlchemy()
+  if db.connectDB('sqlite', None, None, database_filename, None, False):
+    logger.info("Succesfully connect to DB: %s" % (database_filename))
+  else:
+    logger.error("Unable to connect to DB: %s" % (database_filename))
+
+  obs_mapping = json_obs_map()
+  obs_mapping.load_json_mapping(json_obs_file)
+  obs_mapping.build_db_mappings(platform_handle=platform_handle, sqlite_database_file=database_filename)
+
+  if len(file_directory) == 0:
+      now_time = datetime.now()
+      now_str = now_time.strftime('%a %b %d %Y %H:%M:%S GMT-0400 (EDT)')
+      get_data = True
+      #THe sutron site only allows 32767 rows to be exported into the excel file, so we cut up our dates.
+      get_date = True
+      current_start_date = start_date
+      while get_data:
+        if current_start_date < end_date:
+
+          stop_date = current_start_date + relativedelta(months=3)
+
+          filepath, filename = os.path.split(file_name)
+          filename, ext = os.path.splitext(filename)
+          output_filename = os.path.join(filepath, "%s_%s_%s%s" % (filename,
+                                                                   current_start_date.strftime("%Y_%m_%d"),
+                                                                   stop_date.strftime("%Y_%m_%d"),
+                                                                   ext))
+
+          get_pier_data(base_url=base_url,
+                         now_time=now_str,
+                         start_time=current_start_date.strftime("%Y-%m-%d %H:%M:%S"),
+                         end_time=stop_date.strftime("%Y-%m-%d %H:%M:%S"),
+                         dest_file=output_filename,
+                         site_id=site_id,
+                         sensor_list=sensor_list)
+          current_start_date = stop_date
+          process_pier_file(output_filename, units_convereter, obs_mapping, db)
+        else:
+          get_data = False
+
+  else:
+    file_list = os.listdir(file_directory)
+    file_list.sort()
+    for file in file_list:
+      full_path = os.path.join(file_directory, file)
+      process_pier_file(full_path, units_convereter, platform_handle, obs_mapping, db)
+
+  return
+
+def process_pier_old(**kwargs):
   with open(file_name, "rU") as data_file:
     csv_reader = csv.reader(data_file)
     checked_platform_exists = False
@@ -492,6 +663,7 @@ def process_pier_files(platform_name,
               break
 
         line_num += 1
+
   return
 
 def process_sun2_files(platform_name,
@@ -500,12 +672,14 @@ def process_sun2_files(platform_name,
                        header_row,
                        units_converter,
                        xenia_db,
-                       utc_start_date):
+                       utc_start_date
+                       ):
 
   logger = logging.getLogger(__name__)
   obs_keys = sun2_to_xenia.keys()
   header_list = header_row.split(",")
   row_entry_date = datetime.now()
+
   utc_tz = timezone('UTC')
   with open(file_name, "rU") as data_file:
     csv_reader = csv.reader(data_file)
@@ -598,15 +772,29 @@ def process_sun2_files(platform_name,
 def process_sun2_data(platform_handle,
                        units_converter,
                        xenia_db,
-                       unique_dates):
+                       unique_dates,
+                       ini_file):
 
   logger = logging.getLogger(__name__)
+
+  config_file = ConfigParser.RawConfigParser()
+  config_file.read(ini_file)
+
+  json_obs_file = config_file.get(platform_handle.split('.')[1], 'obs_mapping_file')
+  database_filename = config_file.get('database', 'name')
+
+  obs_mapping = json_obs_map()
+  obs_mapping.load_json_mapping(json_obs_file)
+  obs_mapping.build_db_mappings(platform_handle=platform_handle, sqlite_database_file=database_filename)
+
+
   utc_tz = timezone('UTC')
   eastern_tz= timezone('US/Eastern')
   #http://cormp.org/data.php?format=json&platform=sun2&time=2009-01-01T00:00:00/2009-01-02T02:06:02
-  url = "http://cormp.org/data.php"
-  row_entry_date = datetime.now()
+  base_url = "http://services.cormp.org/data.php?format=json&platform={platform_name}&time={start_time}/{end_time}"
 
+  row_entry_date = datetime.now()
+  '''
   sun2_to_xenia = {
     "sea_water_practical_salinity": {
       "units": "psu",
@@ -632,8 +820,7 @@ def process_sun2_data(platform_handle,
 
     }
   }
-
-  #if xenia_db.platformExists(platform_handle) == -1:
+  
   s_order = 1
   obs_list = []
   for obs_key in sun2_to_xenia:
@@ -642,14 +829,59 @@ def process_sun2_data(platform_handle,
                      'uom_name': obs_info['xenia_units'],
                      's_order': s_order})
   xenia_db.buildMinimalPlatform(platform_handle, obs_list)
-
-  platform_name_parts = platform_handle.split('.')
+  '''
+  platform_parts = platform_handle.split('.')
   for start_date in unique_dates:
     utc_start_date = (eastern_tz.localize(datetime.strptime(start_date, '%Y-%m-%d'))).astimezone(utc_tz)
     start_date = utc_start_date - timedelta(hours=24)
 
     logger.debug("Platform: %s Begin Date: %s End Date: %s" % (platform_handle, start_date, utc_start_date))
 
+    url = base_url.format(platform_name=platform_parts[1].lower(), start_time=start_date.strftime('%Y-%m-%d %H:%M:%S'),
+                          end_time=utc_start_date.strftime('%Y-%m-%d %H:%M:%S'))
+
+    try:
+      req = requests.get(url)
+      if req.status_code == 200:
+        time_series = req.json()
+        parameters = time_series['properties']['parameters']
+        quality_decode = time_series['properties']['quality_levels']
+
+        for param in parameters:
+          xenia_obs = obs_mapping.get_rec_from_source_name(param['id'])
+          '''
+          if param['id'] == 'sea_water_temperature':
+            obs_type = sun2_to_xenia[param['id']]['xenia_name']
+            uom_type = 'celsius'
+          '''
+          if xenia_obs is not None:
+            try:
+              observations = param['observations']
+              for ndx, obs_val in enumerate(observations['values']):
+                try:
+                  obs_val = float(obs_val)
+                except ValueError as e:
+                  logger.exception(e)
+                else:
+                  logger.debug("Adding obs: %s(%s) Date: %s Value: %s S_Order: %d" % \
+                               (xenia_obs.target_obs, xenia_obs.target_uom, observations['times'][ndx], obs_val, xenia_obs.s_order))
+                  xenia_db.addMeasurement(xenia_obs.target_obs,
+                                          xenia_obs.target_uom,
+                                          platform_handle,
+                                          observations['times'][ndx],
+                                          platform_metadata[platform_handle]['latitude'],
+                                          platform_metadata[platform_handle]['longitude'],
+                                          0,
+                                          [obs_val],
+                                          sOrder=xenia_obs.s_order,
+                                          autoCommit=True,
+                                          rowEntryDate=row_entry_date)
+            except Exception as e:
+              logger.exception(e)
+    except Exception as e:
+      logger.exception(e)
+
+    '''
     data_time = '%s/%s' % (start_date.strftime('%Y-%m-%dT%H:%M:%S'), utc_start_date.strftime('%Y-%m-%dT%H:%M:%S'))
     params = {
       'format': 'json',
@@ -718,7 +950,7 @@ def process_sun2_data(platform_handle,
 
       else:
         logger.ERROR("Request failed with code: %d" % (result.status_code))
-
+    '''
 def process_nos8661070_data(platform_handle,
                        units_converter,
                        xenia_db,
@@ -774,7 +1006,7 @@ def process_nos8661070_data(platform_handle,
     }
   }
   #nos_obs = nos_to_xenia.keys()
-  nos_obs = ['sea_water_temperature']
+  nos_obs = ['wind_speed', 'wind_from_direction']
   if xenia_db.platformExists(platform_handle) == -1:
     s_order = 1
     obs_list = []
@@ -797,7 +1029,7 @@ def process_nos8661070_data(platform_handle,
                            start=start_date,
                            end=utc_start_date)
       try:
-        response = dataCollector.raw(responseFormat="text/csv")
+        response = dataCollector.raw(responseFormat="text/csv").decode()
       except Exception as e:
         logger.exception(e)
       else:
@@ -809,19 +1041,21 @@ def process_nos8661070_data(platform_handle,
             obs_val = float(row[5])
             logger.debug("Adding obs: %s(%s) Date: %s Value: %s S_Order: %d" %\
                          (single_obs, uom_type, obs_date, obs_val, s_order))
-            if not xenia_db.addMeasurement(obs_type,
-                                    uom_type,
-                                    platform_handle,
-                                    obs_date.strftime('%Y-%m-%dT%H:%M:%S'),
-                                    float(row[2]),
-                                    float(row[3]),
-                                    0,
-                                    [obs_val],
-                                    sOrder=s_order,
-                                    autoCommit=True,
-                                    rowEntryDate=row_entry_date ):
-              logger.error(xenia_db.lastErrorMsg)
-
+            try:
+              xenia_db.addMeasurement(obs_type,
+                                      uom_type,
+                                      platform_handle,
+                                      obs_date.strftime('%Y-%m-%dT%H:%M:%S'),
+                                      float(row[2]),
+                                      float(row[3]),
+                                      0,
+                                      [obs_val],
+                                      sOrder=s_order,
+                                      autoCommit=True,
+                                      rowEntryDate=row_entry_date)
+                #logger.error(xenia_db.lastErrorMsg)
+            except Exception as e:
+              logger.exception(e)
           line_cnt += 1
 
 def build_tide_data_file(tide_output_file, unique_dates, log_conf_file):
@@ -835,34 +1069,36 @@ def build_tide_data_file(tide_output_file, unique_dates, log_conf_file):
   create_tide_data_file_mp('8661070',
                            tide_dates,
                            tide_output_file,
-                           4,
+                           1,
                            log_conf_file,
                            True)
 
 
 def main():
   parser = optparse.OptionParser()
-  parser.add_option("-c", "--ConfigFile", dest="config_file",
+  parser.add_option( "--ConfigFile", dest="config_file",
                     help="INI Configuration file." )
-  parser.add_option("-f", "--PierDataFile", dest="pier_data_file", default=None,
+  parser.add_option("--GetPierData", dest="get_pier_data", action="store_true", default=False,
                     help="" )
-  parser.add_option("-u", "--GetSUN2", dest="get_sun2_data", action="store_true", default=False,
+  parser.add_option("--GetOldPierData", dest="get_old_pier_data", action="store_true", default=False,
                     help="" )
-  parser.add_option("-n", "--GetNOS", dest="get_nos_data", action="store_true", default=False,
+  parser.add_option("--GetSUN2", dest="get_sun2_data", action="store_true", default=False,
                     help="" )
-  parser.add_option("-a", "--Header", dest="header_row",
+  parser.add_option("--GetNOS", dest="get_nos_data", action="store_true", default=False,
                     help="" )
-  parser.add_option("-r", "--FirstDataRow", dest="first_data_row",
+  parser.add_option("--Header", dest="header_row",
                     help="" )
-  parser.add_option("-p", "--PlatformName", dest="platform_name",
+  parser.add_option("--FirstDataRow", dest="first_data_row",
                     help="" )
-  parser.add_option("-e", "--ETCOCFile", dest="etcoc_file", default=None,
+  parser.add_option("--PlatformName", dest="platform_name",
                     help="" )
-  parser.add_option("-s", "--StartDate", dest="start_date", default=None,
+  parser.add_option("--ETCOCFile", dest="etcoc_file", default=None,
                     help="" )
-  parser.add_option("-d", "--EndDate", dest="end_date", default=None,
+  parser.add_option("--StartDate", dest="start_date", default=None,
                     help="" )
-  parser.add_option("-t", "--TideOutFile", dest="tide_output_file", default="",
+  parser.add_option("--EndDate", dest="end_date", default=None,
+                    help="" )
+  parser.add_option("--TideOutFile", dest="tide_output_file", default="",
                     help="")
 
 
@@ -925,19 +1161,23 @@ def main():
       if add_date:
         start_dates.append(sample_date)
       unique_dates = start_dates
-  if options.pier_data_file is not None:
+  if options.get_old_pier_data:
+    i=0
+  if options.get_pier_data:
     process_pier_files(options.platform_name,
-                       options.pier_data_file,
+                       utc_start_date,
+                       utc_end_date,
                        int(options.first_data_row),
                        options.header_row,
                        units_conversion,
-                       xenia_db,
-                       unique_dates)
+                       unique_dates,
+                       options.config_file)
   elif options.get_sun2_data:
     process_sun2_data(options.platform_name,
                        units_conversion,
                        xenia_db,
-                       unique_dates)
+                       unique_dates,
+                      options.config_file)
   elif options.get_nos_data:
     process_nos8661070_data(options.platform_name,
                        units_conversion,
@@ -950,4 +1190,3 @@ def main():
     logger.info("Log closed.")
 if __name__ == "__main__":
   main()
-

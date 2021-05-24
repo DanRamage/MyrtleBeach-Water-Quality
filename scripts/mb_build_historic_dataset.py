@@ -7,7 +7,10 @@ from datetime import datetime, timedelta
 from pytz import timezone
 
 import optparse
-import ConfigParser
+if sys.version_info[0] < 3:
+  import ConfigParser
+else:
+  import configparser as ConfigParser
 import csv
 from collections import OrderedDict
 from mb_wq_data import mb_wq_historical_data, mb_sample_sites
@@ -82,7 +85,7 @@ def main():
                                      ('enterococcus_value', etcoc_value)])
             try:
               mb_data_obj.query_data(wq_utc_date, wq_utc_date, site_data)
-            except Exception,e:
+            except Exception as e:
               if logger:
                 logger.exception(e)
               sys.exit(-1)

@@ -46,7 +46,7 @@ def create_historical_summary(config_file_name,
 
     ncsu_model_tds_url = config_file.get('ncsu_model_data', 'thredds_url')
 
-  except ConfigParser, e:
+  except ConfigParser as e:
     if logger:
       logger.exception(e)
   else:
@@ -63,7 +63,7 @@ def create_historical_summary(config_file_name,
     try:
       wq_file = open(historical_wq_file, "rU")
       wq_history_file = csv.DictReader(wq_file, delimiter=',', quotechar='"', fieldnames=header_row)
-    except IOError, e:
+    except IOError as e:
       if logger:
         logger.exception(e)
     else:
@@ -86,7 +86,7 @@ def create_historical_summary(config_file_name,
                                       model_bbox=model_bbox,
                                       model_within_polygon=model_within_polygon,
                                       use_logger=True)
-      except Exception, e:
+      except Exception as e:
         if logger:
           logger.exception(e)
       else:
@@ -112,10 +112,10 @@ def create_historical_summary(config_file_name,
                 time_val = "%02d:%02d:00" % (int(hours_mins[0]), int(hours_mins[1]))
               try:
                 wq_date = eastern.localize(datetime.strptime('%s %s' % (date_val, time_val), '%m/%d/%y %H:%M:%S'))
-              except ValueError, e:
+              except ValueError as e:
                 try:
                   wq_date = eastern.localize(datetime.strptime('%s %s' % (date_val, time_val), '%m/%d/%Y %H:%M:%S'))
-                except ValueError, e:
+                except ValueError as e:
                   if logger:
                     logger.error("Processing halted at line: %d" % (line_num))
                     logger.exception(e)
@@ -153,7 +153,7 @@ def create_historical_summary(config_file_name,
                         'lo_tide_height_offset': config_file.getfloat(offset_tide_station, 'lo_tide_height_offset')
                       }
 
-                    except ConfigParser.Error, e:
+                    except ConfigParser.Error as e:
                       if logger:
                         logger.exception(e)
 
@@ -175,7 +175,7 @@ def create_historical_summary(config_file_name,
                           logger.debug("Opening sample site history file with append: %s" % (sample_site_filename))
                         site_data_file = open(sample_site_filename, 'a')
                         write_header = False
-                    except IOError, e:
+                    except IOError as e:
                       if logger:
                         logger.exception(e)
                       raise e
@@ -190,7 +190,7 @@ def create_historical_summary(config_file_name,
                                            ('enterococcus_code', row['enterococcus_code'])])
                   try:
                     fl_wq_data.query_data(wq_utc_date, wq_utc_date, site_data)
-                  except Exception,e:
+                  except Exception as e:
                     if logger:
                       logger.exception(e)
                     sys.exit(-1)
@@ -222,7 +222,7 @@ def create_historical_summary(config_file_name,
                 else:
                   try:
                     sites_not_found.index(row['SPLocation'])
-                  except ValueError,e:
+                  except ValueError as e:
                     sites_not_found.append(row['SPLocation'])
 
           line_num += 1
@@ -272,7 +272,7 @@ def main():
       logging.config.fileConfig(logConfFile)
       logger = logging.getLogger('florida_wq_processing_logger')
       logger.info("Log file opened.")
-  except ConfigParser.Error, e:
+  except ConfigParser.Error as e:
     import traceback
     traceback.print_exc(e)
     sys.exit(-1)
