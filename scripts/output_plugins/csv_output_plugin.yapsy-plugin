@@ -9,6 +9,6 @@ Website = http://howsthebeach.org
 Description = Myrtle Beach specific water quality processing.
 
 [Settings]
-csv_outfile=/mnt/wq_feeds/sc_wq/vb_engine/%s-Predictions.csv
+csv_outfile=/mnt/wq_feeds/sc_wq/vb_engine/%%s-Predictions.csv
 
 
