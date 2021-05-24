@@ -157,7 +157,7 @@ def run_wq_models(**kwargs):
     #Retrieve the data needed for the models.
 
     mb_wq_data = mb_wq_model_data(xenia_wq_db_name=xenia_wq_db_file,
-                                  xenia_obs_db_type='postgres',
+                                  xenia_obs_db_type='postgresql',
                                   xenia_obs_db_host=xenia_obs_db_host,
                                   xenia_obs_db_user=xenia_obs_db_user,
                                   xenia_obs_db_password=xenia_obs_db_password,
