@@ -1028,7 +1028,7 @@ class mb_wq_model_data(wq_data):
             self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
                                                                                                      scalar_speed_avg,
                                                                                                      scalar_speed_avg * meters_per_second_to_mph,
-                                                                                                     avg_dir_components[1]))
+                                                                                                     avg_dir_components['scalar'][1]))
         else:
           self.logger.debug("Platform: %s no wind data found for datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
