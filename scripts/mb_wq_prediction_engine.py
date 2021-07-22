@@ -243,7 +243,7 @@ def run_output_plugins(**kwargs):
   logger.info("Begin run_output_plugins")
 
   simplePluginManager = PluginManager()
-  logging.getLogger('yapsy').setLevel(logging.DEBUG)
+  #logging.getLogger('yapsy').setLevel(logging.DEBUG)
   simplePluginManager.setCategoriesFilter({
      "OutputResults": output_plugin
      })
@@ -451,9 +451,9 @@ class mb_prediction_engine(wq_prediction_engine):
     self.logger.info("Begin collect_data")
     try:
       simplePluginManager = PluginManager()
-      yapsy_log = logging.getLogger('yapsy')
-      yapsy_log.setLevel(logging.DEBUG)
-      yapsy_log.disabled = False
+      #yapsy_log = logging.getLogger('yapsy')
+      #yapsy_log.setLevel(logging.DEBUG)
+      #yapsy_log.disabled = False
       simplePluginManager.setCategoriesFilter({
          "DataCollector": data_collector_plugin
          })
