@@ -1,0 +1,16 @@
+[Core]
+Name = WQ JSON File Plugin
+Module = json_output_plugin
+
+[Documentation]
+Author = Dan Ramage
+Version = 0.1
+Website = http://howsthebeach.org
+Description = Myrtle Beach specific water quality processing.
+
+[Settings]
+json_outfile=/mnt/wq_feeds/sc_wq/vb_engine/Predictions.json
+
+[site_message]
+severity=High
+message=ATTENTION: Due to Hurricane Matthew's damage of Springmaid Pier, data sources required for the forecasts are currently unavailable.

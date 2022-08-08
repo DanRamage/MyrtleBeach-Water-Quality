@@ -9,4 +9,4 @@ Website = http://howsthebeach.org
 Description = Requests the sample data and station metadata from DHEC.
 
 [Settings]
-ini_file=/Users/danramage/Documents/workspace/WaterQuality/MyrtleBeach-Water-Quality/config/mb_dhec_bacteria_scraper_debug.ini
+ini_file=/Users/danramage/Documents/workspace/WaterQuality/MyrtleBeach-Water-Quality/config/dhecBeachAdvisoryApp-Debug.ini

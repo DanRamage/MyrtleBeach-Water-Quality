@@ -5,7 +5,10 @@ import logging.config
 import csv
 import glob
 import optparse
-import ConfigParser
+if sys.version_info[0] < 3:
+  import ConfigParser
+else:
+  import configparser as ConfigParser
 import traceback
 from openpyxl import load_workbook
 from mb_wq_data import mb_sample_sites
@@ -175,7 +178,7 @@ def main():
   try:
     boundaries_location_file = config_file.get('boundaries_settings', 'boundaries_file')
     sites_location_file = config_file.get('boundaries_settings', 'sample_sites')
-  except ConfigParser.Error,e:
+  except ConfigParser.Error as e:
     if logger:
       logger.exception(e)
   else:

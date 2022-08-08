@@ -10,3 +10,5 @@ Description = Myrtle Beach specific nexrad data processing.
 
 [Settings]
 ini_file=/home/xeniaprod/scripts/MyrtleBeach-Water-Quality/config/mb_config.ini
+log_config=/home/xeniaprod/scripts/MyrtleBeach-Water-Quality/config/logconf/mb_XMRGProcessing.conf
+xmrg_log_file=/home/xeniaprod/tmp/log/mb_nexrad_workers.log

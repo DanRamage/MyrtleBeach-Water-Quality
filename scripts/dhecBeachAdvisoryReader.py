@@ -18,7 +18,11 @@ sys.path.append('../commonfiles/python')
 #import requests
 import logging.config
 import optparse
-import ConfigParser
+if sys.version_info[0] < 3:
+  import ConfigParser
+else:
+  import configparser as ConfigParser
+
 import copy
 from lxml import etree    
 import geojson
@@ -33,7 +37,7 @@ from dateutil import parser as du_parser
 
 import csv
 from decimal import *
-import httplib
+#import httplib
 
 import suds
 from suds.client import Client
@@ -94,7 +98,7 @@ class waterQualityAdvisory(object):
       if(self.logger):
         self.logger.info("Opened output file: %s" % (geoJSONOutfile))
         
-    except IOError,e:
+    except IOError as e:
       if(self.logger):
         self.logger.exception(e)
     else:
@@ -113,7 +117,7 @@ class waterQualityAdvisory(object):
                 longitude = float(line['longitude'].strip())
 
                 geometry = geojson.Point(coordinates=[longitude, latitude])
-              except ValueError,e:
+              except ValueError as e:
                 if(self.logger):
                   self.logger.error("Line: %d invalid value for either latitude or longitude" % (lineCnt))
                 continue
@@ -147,7 +151,7 @@ class waterQualityAdvisory(object):
         
         if(self.logger):
           self.logger.info("JSON results written to file.")
-      except Exception,e:
+      except Exception as e:
         if(self.logger):
           self.logger.exception(e)
       destFile.close()
@@ -194,7 +198,7 @@ class waterQualityAdvisory(object):
       inputFile = open(inputFilename, 'rU')
       dataFile = csv.DictReader(inputFile, fieldNames)
       outFile = open(outputFilename, 'w')
-    except IOError, e:
+    except IOError as e:
       if(self.logger):
         self.logger.exception(e)
     else:
@@ -233,7 +237,7 @@ class waterQualityAdvisory(object):
         stationObj['date'] = stationObj['date'].strftime("%Y-%m-%d")
     try:
       outFile.write(geojson.dumps(jsonObj, sort_keys=True, indent=4 * ' '))      
-    except Exception,e:
+    except Exception as e:
       if(self.logger):
         self.logger.exception(e)
     outFile.close()  
@@ -257,15 +261,31 @@ class waterQualityAdvisory(object):
     historyWQ = kwargs['historical_wq']
     dhec_rest_url = kwargs['dhec_url']
     sample_data_post_url = kwargs.get('post_data_url', None)
+    sampling_stations = kwargs.get('sampling_stations', None)
     if(self.logger):
       self.logger.info("Begin data processing.")
 
     self.logger.debug("Opening station metadata file: %s" % (stationGeoJsonFile))
-    stationNfoList = []
+    stationNfoList = {}
     try:
       with open(stationGeoJsonFile, "r") as stationDataFile:
         stationNfoList = geojson.load(stationDataFile)
-    except IOError as e:
+        features = stationNfoList['features']
+        #If we passed in a sampling stations object, let's only use the stations
+        #from that, pruning out everything else.
+        if sampling_stations is not None:
+          station_list = []
+          for station in sampling_stations:
+            station_list.append(station.name)
+          delete_list = []
+          for ndx, feature in enumerate(features):
+            if feature['id'] not in station_list:
+              delete_list.append(ndx)
+          if len(delete_list):
+            delete_list.sort(reverse=True)
+            for item in delete_list:
+              del features[item]
+    except (IOError, Exception) as e:
       self.logger.exception(e)
     else:
       dhec_rest_results = self.get_station_data_from_dhec(dhec_rest_url)
@@ -287,9 +307,7 @@ class waterQualityAdvisory(object):
                                              'value': result['value']}
               url = sample_data_post_url.format(**sub_dict)
               try:
-                self.logger.debug("POSTing data to %s" % (url))
                 requests.post(url)
-                self.logger.debug("POSTed data.")
               except Exception as e:
                 self.logger.exception(e)
       #DWR 2013-07-09
@@ -436,9 +454,10 @@ class waterQualityAdvisory(object):
           station_data = results[station_name]
           sorted_data = sorted(station_data['results'], key=lambda rec: rec['date'])
           station_data['results'] = sorted_data
+          self.logger.debug("Results: %s" % (sorted_data))
         #with open("/Users/danramage/tmp/response.txt", "w") as outfile:
         #  outfile.write(str(response))
-    except Exception, e:
+    except Exception as e:
       if self.logger:
         self.logger.exception(e)
     if self.logger:
@@ -497,7 +516,7 @@ class waterQualityAdvisory(object):
         if(self.logger):
           self.logger.info("JSON results written to file.")
         jsonFile.close()
-      except IOError,e:
+      except IOError as e:
         if(self.logger):
           self.logger.exception(e)
           
@@ -528,7 +547,7 @@ class waterQualityAdvisory(object):
       if(self.logger):
         self.logger.info("JSON results written to file.")
       jsonFile.close()
-    except IOError,e:
+    except IOError as e:
       if(self.logger):
         self.logger.exception(e)
 def main():      
@@ -556,9 +575,9 @@ def main():
       logging.config.fileConfig(logConfFile)
       logger = logging.getLogger("dhec_beach_advisory_app")
       logger.info("Log file opened.")
-  except ConfigParser.Error, e:
+  except ConfigParser.Error as e:
     print("No log configuration file given, logging disabled.")
-  except Exception,e:
+  except Exception as e:
     import traceback
     traceback.print_exc(e)
     sys.exit(-1)
@@ -579,7 +598,7 @@ def main():
     dhec_rest_url = configFile.get('websettings', 'dhec_rest_url')
 
     sample_data_post_url = configFile.get('sample_data_rest', 'url')
-  except ConfigParser.Error, e:
+  except ConfigParser.Error as e:
     if(logger):
       logger.exception(e)
   
@@ -625,11 +644,11 @@ def main():
                                 json_file_path=jsonFilepath,
                                 historical_wq=historyWQ,
                                 dhec_url=dhec_rest_url,
-                                post_data_url=None)
-    except IOError,e:
+                                post_data_url=sample_data_post_url)
+    except IOError as e:
       if(logger):
         logger.exception(e)
-    except Exception,e:
+    except Exception as e:
       if(logger):
         logger.exception(e)
     if(logger):

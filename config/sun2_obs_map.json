@@ -1,0 +1,30 @@
+[
+  {
+  "target_obs": "salinity",
+    "header_column": "sea_water_practical_salinity",
+    "s_order": 1,
+    "source_uom": "psu",
+    "target_uom": "psu"
+  },
+  {
+  "target_obs": "water_temperature",
+    "header_column": "sea_water_temperature",
+    "s_order": 1,
+    "source_uom": "celsius",
+    "target_uom": "celsius"
+  },
+  {
+  "target_obs": "wind_speed",
+    "header_column": "wind_speed",
+    "s_order": 1,
+    "source_uom": "m_s-1",
+    "target_uom": "m_s-1"
+  },
+  {
+  "target_obs": "wind_from_direction",
+    "header_column": "wind_from_direction",
+    "s_order": 1,
+    "source_uom": "degrees_true",
+    "target_uom": "degrees_true"
+  }
+]

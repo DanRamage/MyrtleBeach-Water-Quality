@@ -1,8 +1,7 @@
 import sys
 sys.path.append('../../commonfiles/python')
 import logging.config
-import data_collector_plugin as my_plugin
-
+from data_collector_plugin import data_collector_plugin
 if sys.version_info[0] < 3:
   import ConfigParser
 else:
@@ -13,10 +12,10 @@ import geojson
 from dhecBeachAdvisoryReader import waterQualityAdvisory
 from mb_wq_data import mb_sample_sites
 
-class dhec_sample_data_collector_plugin(my_plugin.data_collector_plugin):
+class dhec_sample_data_collector_plugin(data_collector_plugin):
 
   def initialize_plugin(self, **kwargs):
-    my_plugin.data_collector_plugin.initialize_plugin(self, **kwargs)
+    data_collector_plugin.initialize_plugin(self, **kwargs)
     try:
       logger = logging.getLogger(self.__class__.__name__)
       plugin_details = kwargs['details']
@@ -30,10 +29,16 @@ class dhec_sample_data_collector_plugin(my_plugin.data_collector_plugin):
     try:
       configFile = ConfigParser.RawConfigParser()
       configFile.read(self.ini_file)
-      log_file = configFile.get('logging', 'scraperConfigFile')
-      logging.config.fileConfig(log_file)
+
+      logger_conf = configFile.get("logging", 'scraperConfigFile')
+      logging.config.fileConfig(logger_conf)
       logger = logging.getLogger()
       logger.debug("run started.")
+
+      #self.logging_client_cfg['disable_existing_loggers'] = True
+      #logging.config.dictConfig(self.logging_client_cfg)
+      #logger = logging.getLogger(self.__class__.__name__)
+      #logger.debug("run started.")
 
       """
       logger = None
@@ -47,7 +52,7 @@ class dhec_sample_data_collector_plugin(my_plugin.data_collector_plugin):
       print("No log configuration file given, logging disabled.")
     except Exception as e:
       import traceback
-      traceback.print_exc()
+      traceback.print_exc(e)
       sys.exit(-1)
     try:
       logger.debug("Getting config params.")

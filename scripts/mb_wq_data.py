@@ -8,7 +8,7 @@ from pytz import timezone
 from shapely.geometry import Polygon
 import logging.config
 
-import netCDF4 as nc
+#import netCDF4 as nc
 import numpy as np
 from bisect import bisect_left,bisect_right
 import csv
@@ -21,7 +21,7 @@ from NOAATideData import noaaTideData
 from xeniaSQLAlchemy import xeniaAlchemy, multi_obs, func
 from xeniaSQLiteAlchemy import xeniaAlchemy as sl_xeniaAlchemy, multi_obs as sl_multi_obs, func as sl_func
 from sqlalchemy import or_
-from stats import calcAvgSpeedAndDir
+from stats import calcAvgSpeedAndDirV2,calcAvgSpeedAndDir
 from romsTools import closestCellFromPtInPolygon
 from xenia import qaqcTestFlags
 meters_per_second_to_mph = 2.23694
@@ -64,7 +64,7 @@ class mb_sample_sites(sampling_sites):
 
         sites_file = open(kwargs['file_name'], "rU")
         dict_file = csv.DictReader(sites_file, delimiter=',', quotechar='"', fieldnames=header_row)
-      except IOError, e:
+      except IOError as e:
         if self.logger:
           self.logger.exception(e)
       else:
@@ -144,17 +144,18 @@ class mb_wq_historical_data(wq_data):
       else:
         self.logger.error("Unable to connect to DB: %s" %(kwargs['xenia_database_name']))
 
-    except Exception,e:
+    except Exception as e:
       self.logger.exception(e)
       raise
 
     #List of platforms that we query same obs types from
-    self.platforms = ['carocoops.SUN2.buoy', 'lbhmc.2ndAveNorth.pier', 'lbhmc.CherryGrove.pier', 'lbhmc.Apache.pier']
+    self.platforms = ['carocoops.SUN2.buoy', 'lbhmc.CherryGrove.pier', 'lbhmc.Apache.pier']
+    #self.platforms = ['carocoops.SUN2.buoy', 'lbhmc.2ndAveNorth.pier', 'lbhmc.CherryGrove.pier', 'lbhmc.Apache.pier']
 
   def __del__(self):
     if self.logger:
       self.logger.debug("Closing connection to xenia db")
-    self.xenia_obs_db.DB.close()
+    self.xenia_obs_db.disconnect()
 
   def reset(self, **kwargs):
     self.site = kwargs['site']
@@ -176,9 +177,8 @@ class mb_wq_historical_data(wq_data):
     self.initialize_return_data(wq_tests_data)
 
     self.get_tide_data(start_date, wq_tests_data)
-    #self.get_sun2_data(start_date, wq_tests_data)
     self.get_nexrad_data(start_date, wq_tests_data)
-    self.get_nos_data(start_date, wq_tests_data)
+    #self.get_nos_data(start_date, wq_tests_data)
     for platform in self.platforms:
       var_name = platform.split('.')
       self.get_platform_data(start_date, platform, wq_tests_data, var_name[1].lower())
@@ -227,23 +227,29 @@ class mb_wq_historical_data(wq_data):
     var_name = 'tide_stage_%s' % (self.tide_station)
     wq_tests_data[var_name] = wq_defines.NO_DATA
 
+    '''
     wq_tests_data['nos8661070_wind_spd'] = wq_defines.NO_DATA
     wq_tests_data['nos8661070_wind_dir_val'] = wq_defines.NO_DATA
     wq_tests_data['nos8661070_water_temp'] = wq_defines.NO_DATA
     wq_tests_data['nos8661070_water_level'] = wq_defines.NO_DATA
-
+    '''
     for platform in self.platforms:
       platform_name = platform.split('.')
       var_name = '%s_water_temp' % (platform_name[1].lower())
       wq_tests_data[var_name] = wq_defines.NO_DATA
       var_name = '%s_salinity' % (platform_name[1].lower())
       wq_tests_data[var_name] = wq_defines.NO_DATA
-      if platform == 'carocoops.SUN2.buoy':
-        var_name = '%s_wind_speed' % (platform_name[1].lower())
-        wq_tests_data[var_name] = wq_defines.NO_DATA
-        var_name = '%s_wind_dir_val' % (platform_name[1].lower())
-        wq_tests_data[var_name] = wq_defines.NO_DATA
-      else:
+      #if platform == 'carocoops.SUN2.buoy':
+      var_name = '%s_wind_speed' % (platform_name[1].lower())
+      wq_tests_data[var_name] = wq_defines.NO_DATA
+      var_name = '%s_wind_dir_val' % (platform_name[1].lower())
+      wq_tests_data[var_name] = wq_defines.NO_DATA
+      var_name = "%s_wind_speed_u" % platform_name[1].lower()
+      wq_tests_data[var_name] = wq_defines.NO_DATA
+      var_name = "%s_wind_dir_val_v" % platform_name[1].lower()
+      wq_tests_data[var_name] = wq_defines.NO_DATA
+
+      if platform !='carocoops.SUN2.buoy':
         var_name = "%s_chlorophyl" % (platform_name[1].lower())
         wq_tests_data[var_name] = wq_defines.NO_DATA
         var_name = "%s_do_percent" % (platform_name[1].lower())
@@ -306,11 +312,13 @@ class mb_wq_historical_data(wq_data):
                              time_zone='GMT')
           wq_tests_data['tide_stage_%s' % (self.tide_station)] = tide_stage
 
-        except Exception,e:
+        except Exception as e:
           if self.logger:
             self.logger.exception(e)
         """
       else:
+        if start_date > datetime.strptime('2022-01-01', "%Y-%m-%d").astimezone(timezone('UTC')):
+          start_date
         self.logger.error("Tide Data not found for: %s" % (date_key))
     if self.logger:
       self.logger.debug("Finished retrieving tide data for station: %s date: %s" % (self.tide_station, start_date))
@@ -387,6 +395,8 @@ class mb_wq_historical_data(wq_data):
       salinity_var_name = "%s_salinity" % var_name
       wind_spd_var_name = "%s_wind_speed" % var_name
       wind_dir_var_name = "%s_wind_dir_val" % var_name
+      wind_spd_var_name_u = "%s_wind_speed_u" % var_name
+      wind_dir_var_name_v = "%s_wind_dir_val_v" % var_name
       water_temp_var_name = "%s_water_temp" % var_name
       chl_var_name = "%s_chlorophyl" % var_name
       do_percent_var_name = "%s_do_percent" % var_name
@@ -467,7 +477,7 @@ class mb_wq_historical_data(wq_data):
             .filter(sl_multi_obs.sensor_id == do_mg_sensor_id)\
             .order_by(sl_multi_obs.m_date).all()
 
-      except Exception, e:
+      except Exception as e:
         self.logger.exception(e)
       else:
         if salinity_id is not None:
@@ -521,14 +531,17 @@ class mb_wq_historical_data(wq_data):
                                                                                               avg_speed_dir_components[1]))
 
             #Unity components, just direction with speeds all 1.
-            avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
+            avg_dir_components = calcAvgSpeedAndDirV2(direction_tuples)
             scalar_speed_avg = scalar_speed_avg / speed_count
             wq_tests_data[wind_spd_var_name] = scalar_speed_avg * meters_per_second_to_mph
-            wq_tests_data[wind_dir_var_name] = avg_dir_components[1]
+            wq_tests_data[wind_dir_var_name] = avg_dir_components['scalar'][1]
+            wq_tests_data[wind_spd_var_name_u] = avg_dir_components['vector'][0]
+            wq_tests_data[wind_dir_var_name_v] = avg_dir_components['vector'][1]
+
             self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
                                                                                                      scalar_speed_avg,
                                                                                                      scalar_speed_avg * meters_per_second_to_mph,
-                                                                                                     avg_dir_components[1]))
+                                                                                                     avg_dir_components['scalar'][1]))
         else:
           self.logger.debug("Platform: %s no wind data found for datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
@@ -579,7 +592,7 @@ class mb_wq_historical_data(wq_data):
           .filter(sl_multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(sl_multi_obs.sensor_id == wind_dir_sensor_id)\
           .order_by(sl_multi_obs.m_date).all()
-      except Exception, e:
+      except Exception as e:
         self.logger.exception(e)
       else:
         if len(salinity_data):
@@ -668,52 +681,53 @@ class mb_wq_historical_data(wq_data):
           .filter(sl_multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(sl_multi_obs.sensor_id == wind_dir_sensor_id)\
           .order_by(sl_multi_obs.m_date).all()
-      except Exception, e:
+      except Exception as e:
         self.logger.exception(e)
       else:
+        try:
+          if len(water_temp_data):
+            wq_tests_data['nos8661070_water_temp'] = sum(rec.m_value for rec in water_temp_data) / len(water_temp_data)
+          self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_temp'], len(water_temp_data)))
 
-        if len(water_temp_data):
-          wq_tests_data['nos8661070_water_temp'] = sum(rec.m_value for rec in water_temp_data) / len(water_temp_data)
-        self.logger.debug("Platform: %s Avg Water Temp: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_temp'], len(water_temp_data)))
+          if len(water_level_data):
+            wq_tests_data['nos8661070_water_level'] = sum(rec.m_value for rec in water_level_data) / len(water_level_data)
+          self.logger.debug("Platform: %s Avg Water Level: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_level'], len(water_level_data)))
 
-        if len(water_level_data):
-          wq_tests_data['nos8661070_water_level'] = sum(rec.m_value for rec in water_level_data) / len(water_level_data)
-        self.logger.debug("Platform: %s Avg Water Level: %f Records used: %d" % (platform_handle,wq_tests_data['nos8661070_water_level'], len(water_level_data)))
+          wind_dir_tuples = []
+          direction_tuples = []
+          scalar_speed_avg = None
+          speed_count = 0
+          for wind_speed_row in wind_speed_data:
+            for wind_dir_row in wind_dir_data:
+              if wind_speed_row.m_date == wind_dir_row.m_date:
+                self.logger.debug("Building tuple for Speed(%s): %f Dir(%s): %f" % (wind_speed_row.m_date, wind_speed_row.m_value, wind_dir_row.m_date, wind_dir_row.m_value))
+                if scalar_speed_avg is None:
+                  scalar_speed_avg = 0
+                scalar_speed_avg += wind_speed_row.m_value
+                speed_count += 1
+                #Vector using both speed and direction.
+                wind_dir_tuples.append((wind_speed_row.m_value, wind_dir_row.m_value))
+                #Vector with speed as constant(1), and direction.
+                direction_tuples.append((1, wind_dir_row.m_value))
+                break
+          if len(wind_dir_tuples):
+            avg_speed_dir_components = calcAvgSpeedAndDirV2(wind_dir_tuples)
+            self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                                avg_speed_dir_components['scalar'][0],
+                                                                                                avg_speed_dir_components['scalar'][0] * meters_per_second_to_mph,
+                                                                                                avg_speed_dir_components['scalar'][1]))
 
-        wind_dir_tuples = []
-        direction_tuples = []
-        scalar_speed_avg = None
-        speed_count = 0
-        for wind_speed_row in wind_speed_data:
-          for wind_dir_row in wind_dir_data:
-            if wind_speed_row.m_date == wind_dir_row.m_date:
-              self.logger.debug("Building tuple for Speed(%s): %f Dir(%s): %f" % (wind_speed_row.m_date, wind_speed_row.m_value, wind_dir_row.m_date, wind_dir_row.m_value))
-              if scalar_speed_avg is None:
-                scalar_speed_avg = 0
-              scalar_speed_avg += wind_speed_row.m_value
-              speed_count += 1
-              #Vector using both speed and direction.
-              wind_dir_tuples.append((wind_speed_row.m_value, wind_dir_row.m_value))
-              #Vector with speed as constant(1), and direction.
-              direction_tuples.append((1, wind_dir_row.m_value))
-              break
-        if len(wind_dir_tuples):
-          avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
-          self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
-                                                                                              avg_speed_dir_components[0],
-                                                                                              avg_speed_dir_components[0] * meters_per_second_to_mph,
-                                                                                              avg_speed_dir_components[1]))
-
-          #Unity components, just direction with speeds all 1.
-          avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
-          scalar_speed_avg = scalar_speed_avg / speed_count
-          wq_tests_data['nos8661070_wind_spd'] = scalar_speed_avg * meters_per_second_to_mph
-          wq_tests_data['nos8661070_wind_dir_val'] = avg_dir_components[1]
-          self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
-                                                                                                     scalar_speed_avg,
-                                                                                                     scalar_speed_avg * meters_per_second_to_mph,
-                                                                                                     avg_dir_components[1]))
-
+            #Unity components, just direction with speeds all 1.
+            avg_dir_components = calcAvgSpeedAndDirV2(direction_tuples)
+            scalar_speed_avg = scalar_speed_avg / speed_count
+            wq_tests_data['nos8661070_wind_spd'] = scalar_speed_avg * meters_per_second_to_mph
+            wq_tests_data['nos8661070_wind_dir_val'] = avg_dir_components['scalar'][1]
+            self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
+                                                                                                       scalar_speed_avg,
+                                                                                                       scalar_speed_avg * meters_per_second_to_mph,
+                                                                                                       avg_dir_components['scalar'][1]))
+        except Exception as e:
+          self.logger.exception(e)
       self.logger.debug("Finished retrieving platform: %s datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
       return
@@ -745,7 +759,7 @@ class mb_wq_model_data(wq_data):
         self.logger.error("Unable to connect to DB: %s at %s." %(kwargs['xenia_obs_db_name'],kwargs['xenia_obs_db_host']))
 
 
-    except Exception,e:
+    except Exception as e:
       self.logger.exception(e)
       raise
 
@@ -853,7 +867,7 @@ class mb_wq_model_data(wq_data):
     #If we are resetting only the site specific data, no need to re-query these.
     if not reset_site_specific_data_only:
       self.get_tide_data(start_date, wq_tests_data)
-      self.get_nos_data(start_date, wq_tests_data)
+      #self.get_nos_data(start_date, wq_tests_data)
       for platform in self.platforms:
         var_name = platform.split('.')
         if var_name[1] == '2ndave':
@@ -956,7 +970,7 @@ class mb_wq_model_data(wq_data):
             .filter(sl_multi_obs.sensor_id == do_mg_sensor_id)\
             .order_by(sl_multi_obs.m_date).all()
 
-      except Exception, e:
+      except Exception as e:
         self.logger.exception(e)
       else:
         if salinity_id is not None:
@@ -1003,21 +1017,21 @@ class mb_wq_model_data(wq_data):
                 break
 
           if len(wind_dir_tuples):
-            avg_speed_dir_components = calcAvgSpeedAndDir(wind_dir_tuples)
+            avg_speed_dir_components = calcAvgSpeedAndDirV2(wind_dir_tuples)
             self.logger.debug("Platform: %s Avg Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
-                                                                                              avg_speed_dir_components[0],
-                                                                                              avg_speed_dir_components[0] * meters_per_second_to_mph,
-                                                                                              avg_speed_dir_components[1]))
+                                                                                              avg_speed_dir_components['scalar'][0],
+                                                                                              avg_speed_dir_components['scalar'][0] * meters_per_second_to_mph,
+                                                                                              avg_speed_dir_components['scalar'][1]))
 
             #Unity components, just direction with speeds all 1.
-            avg_dir_components = calcAvgSpeedAndDir(direction_tuples)
+            avg_dir_components = calcAvgSpeedAndDirV2(direction_tuples)
             scalar_speed_avg = scalar_speed_avg / speed_count
             wq_tests_data[wind_spd_var_name] = scalar_speed_avg * meters_per_second_to_mph
-            wq_tests_data[wind_dir_var_name] = avg_dir_components[1]
+            wq_tests_data[wind_dir_var_name] = avg_dir_components['scalar'][1]
             self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
                                                                                                      scalar_speed_avg,
                                                                                                      scalar_speed_avg * meters_per_second_to_mph,
-                                                                                                     avg_dir_components[1]))
+                                                                                                     avg_dir_components['scalar'][1]))
         else:
           self.logger.debug("Platform: %s no wind data found for datetime: %s" % (platform_handle, start_date.strftime('%Y-%m-%d %H:%M:%S')))
 
@@ -1063,7 +1077,7 @@ class mb_wq_model_data(wq_data):
           .filter(multi_obs.m_date < end_date.strftime('%Y-%m-%dT%H:%M:%S'))\
           .filter(multi_obs.sensor_id == wind_dir_sensor_id)\
           .order_by(multi_obs.m_date).all()
-      except Exception, e:
+      except Exception as e:
         self.logger.exception(e)
       else:
 
@@ -1209,7 +1223,7 @@ class mb_wq_model_data(wq_data):
                              time_zone='GMT')
           wq_tests_data['tide_stage_%s' % (self.tide_station)] = tide_stage
 
-        except Exception,e:
+        except Exception as e:
           if self.logger:
             self.logger.exception(e)
 
@@ -1234,14 +1248,14 @@ class mb_wq_model_data(wq_data):
                            timezone='GMT',
                            smoothData=False)
 
-      except Exception,e:
+      except Exception as e:
         if self.logger:
           self.logger.exception(e)
       else:
         if tide_data and tide_data['HH'] is not None and tide_data['LL'] is not None:
           try:
             range = tide_data['HH']['value'] - tide_data['LL']['value']
-          except TypeError, e:
+          except TypeError as e:
             if self.logger:
               self.logger.exception(e)
           else:
