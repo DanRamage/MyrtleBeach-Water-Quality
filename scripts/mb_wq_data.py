@@ -149,7 +149,8 @@ class mb_wq_historical_data(wq_data):
       raise
 
     #List of platforms that we query same obs types from
-    self.platforms = ['carocoops.SUN2.buoy', 'lbhmc.2ndAveNorth.pier', 'lbhmc.CherryGrove.pier', 'lbhmc.Apache.pier']
+    self.platforms = ['carocoops.SUN2.buoy', 'lbhmc.CherryGrove.pier', 'lbhmc.Apache.pier']
+    #self.platforms = ['carocoops.SUN2.buoy', 'lbhmc.2ndAveNorth.pier', 'lbhmc.CherryGrove.pier', 'lbhmc.Apache.pier']
 
   def __del__(self):
     if self.logger:
@@ -316,6 +317,8 @@ class mb_wq_historical_data(wq_data):
             self.logger.exception(e)
         """
       else:
+        if start_date > datetime.strptime('2022-01-01', "%Y-%m-%d").astimezone(timezone('UTC')):
+          start_date
         self.logger.error("Tide Data not found for: %s" % (date_key))
     if self.logger:
       self.logger.debug("Finished retrieving tide data for station: %s date: %s" % (self.tide_station, start_date))

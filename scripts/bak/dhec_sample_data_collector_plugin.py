@@ -2,7 +2,10 @@ import sys
 sys.path.append('../../commonfiles/python')
 import logging.config
 from data_collector_plugin import data_collector_plugin
-import ConfigParser
+if sys.version_info[0] < 3:
+  import ConfigParser
+else:
+  import configparser as ConfigParser
 import traceback
 import geojson
 
@@ -27,10 +30,15 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
       configFile = ConfigParser.RawConfigParser()
       configFile.read(self.ini_file)
 
-      self.logging_client_cfg['disable_existing_loggers'] = True
-      logging.config.dictConfig(self.logging_client_cfg)
-      logger = logging.getLogger(self.__class__.__name__)
+      logger_conf = configFile.get("logging", 'scraperConfigFile')
+      logging.config.fileConfig(logger_conf)
+      logger = logging.getLogger()
       logger.debug("run started.")
+
+      #self.logging_client_cfg['disable_existing_loggers'] = True
+      #logging.config.dictConfig(self.logging_client_cfg)
+      #logger = logging.getLogger(self.__class__.__name__)
+      #logger.debug("run started.")
 
       """
       logger = None
@@ -40,9 +48,9 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
         logger = logging.getLogger("dhec_beach_advisory_app")
         logger.info("Log file opened.")
       """
-    except ConfigParser.Error, e:
+    except ConfigParser.Error as e:
       print("No log configuration file given, logging disabled.")
-    except Exception,e:
+    except Exception as e:
       import traceback
       traceback.print_exc(e)
       sys.exit(-1)
@@ -66,7 +74,7 @@ class dhec_sample_data_collector_plugin(data_collector_plugin):
       sites_location_file = configFile.get('boundaries_settings', 'sample_sites')
 
       logger.debug("Finished getting config params.")
-    except ConfigParser.Error, e:
+    except ConfigParser.Error as e:
       if(logger):
         logger.exception(e)
 

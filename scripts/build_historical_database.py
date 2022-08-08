@@ -372,69 +372,72 @@ def process_pier_file(file_name, units_convereter, platform_handle, obs_mapping,
   logger = logging.getLogger(__name__)
 
   logger.debug("Opening file: %s" % (file_name))
-  wb = open_workbook(filename=file_name)
-  sheet = wb.sheet_by_index(0)
-  # Get platform info for lat/long
-  # plat_rec = db_obj.session.query(platform) \
-  #  .filter(platform.platform_handle == platform_handle) \
-  #  .one()
-  latitude = platform_metadata[platform_handle]['latitude']
-  longitude = platform_metadata[platform_handle]['longitude']
-  row_entry_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-  for row_index in range(sheet.nrows):
-    try:
-      if row_index > 0:
-        # HEader row, add the column index so we can lookup the obs in the worksheet.
-        if row_index == 1:
-          for col_index in range(sheet.ncols):
-            field_name = sheet.cell(row_index, col_index).value
-            obs_rec = obs_mapping.get_rec_from_source_name(field_name)
-            if obs_rec is not None:
-              obs_rec.source_index = col_index
-        else:
-          # Build the database records.
-          m_date_rec = obs_mapping.get_date_field()
-          for obs_rec in obs_mapping:
-            # Skip the date, not a true obs.
-            if obs_rec.target_obs != 'm_date':
-              try:
-                m_date = sheet.cell(row_index, m_date_rec.source_index).value
-                value = float(sheet.cell(row_index, obs_rec.source_index).value)
-                if obs_rec.target_uom != obs_rec.source_uom:
-                  value = units_convereter.measurementConvert(value, obs_rec.source_uom, obs_rec.target_uom)
-                db_rec = sl_multi_obs(row_entry_date=row_entry_date,
-                                      platform_handle=platform_handle,
-                                      sensor_id=(obs_rec.sensor_id),
-                                      m_type_id=(obs_rec.m_type_id),
-                                      m_date=m_date,
-                                      m_lon=longitude,
-                                      m_lat=latitude,
-                                      m_value=value
-                                      )
+  file, exten = os.path.splitext(file_name)
+  if exten == ".xls":
+    wb = open_workbook(filename=file_name)
+    sheet = wb.sheet_by_index(0)
+    # Get platform info for lat/long
+    # plat_rec = db_obj.session.query(platform) \
+    #  .filter(platform.platform_handle == platform_handle) \
+    #  .one()
+    latitude = platform_metadata[platform_handle]['latitude']
+    longitude = platform_metadata[platform_handle]['longitude']
+    row_entry_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    for row_index in range(sheet.nrows):
+      try:
+        if row_index > 0:
+          # HEader row, add the column index so we can lookup the obs in the worksheet.
+          if row_index == 1:
+            for col_index in range(sheet.ncols):
+              field_name = sheet.cell(row_index, col_index).value
+              obs_rec = obs_mapping.get_rec_from_source_name(field_name)
+              if obs_rec is not None:
+                obs_rec.source_index = col_index
+          else:
+            # Build the database records.
+            m_date_rec = obs_mapping.get_date_field()
+            for obs_rec in obs_mapping:
+              # Skip the date, not a true obs.
+              if obs_rec.target_obs != 'm_date':
+                try:
+                  m_date = sheet.cell(row_index, m_date_rec.source_index).value
+                  value = float(sheet.cell(row_index, obs_rec.source_index).value)
+                  if obs_rec.target_uom != obs_rec.source_uom:
+                    value = units_convereter.measurementConvert(value, obs_rec.source_uom, obs_rec.target_uom)
+                  db_rec = sl_multi_obs(row_entry_date=row_entry_date,
+                                        platform_handle=platform_handle,
+                                        sensor_id=(obs_rec.sensor_id),
+                                        m_type_id=(obs_rec.m_type_id),
+                                        m_date=m_date,
+                                        m_lon=longitude,
+                                        m_lat=latitude,
+                                        m_value=value
+                                        )
 
-                logger.debug("%s Adding m_date: %s obs(%d): %s(%s): %f" % \
-                             (platform_handle,
-                              db_rec.m_date,
-                              db_rec.sensor_id,
-                              obs_rec.target_obs,
-                              obs_rec.target_uom,
-                              db_rec.m_value))
-                db.addRec(db_rec, True)
+                  logger.debug("%s Adding m_date: %s obs(%d): %s(%s): %f" % \
+                               (platform_handle,
+                                db_rec.m_date,
+                                db_rec.sensor_id,
+                                obs_rec.target_obs,
+                                obs_rec.target_uom,
+                                db_rec.m_value))
+                  db.addRec(db_rec, True)
 
-                # input_queue.put(db_rec)
-              except ValueError as e:
-                logger.error("%s m_date: %s obs(%d): %s(%s) no value" % \
-                             (platform_handle,
-                              m_date,
-                              obs_rec.sensor_id,
-                              obs_rec.target_obs,
-                              obs_rec.target_uom
-                              ))
-              except Exception as e:
-                logger.exception(e)
-    except Exception as e:
-      logger.exception(e)
-
+                  # input_queue.put(db_rec)
+                except ValueError as e:
+                  logger.error("%s m_date: %s obs(%d): %s(%s) no value" % \
+                               (platform_handle,
+                                m_date,
+                                obs_rec.sensor_id,
+                                obs_rec.target_obs,
+                                obs_rec.target_uom
+                                ))
+                except Exception as e:
+                  logger.exception(e)
+      except Exception as e:
+        logger.exception(e)
+    else:
+      logger.error("File: %s is not an excel file" % (file_name))
 
 def process_pier_files(platform_name,
                        start_date,
@@ -446,11 +449,11 @@ def process_pier_files(platform_name,
                        ini_file):
 
   logger = logging.getLogger(__name__)
-  obs_keys = pier_obs_to_xenia.keys()
-  header_list = header_row.split(",")
-  row_entry_date = datetime.now()
-  eastern_tz = timezone('US/Eastern')
-  utc_tz = timezone('UTC')
+  #obs_keys = pier_obs_to_xenia.keys()
+  #header_list = header_row.split(",")
+  #row_entry_date = datetime.now()
+  #eastern_tz = timezone('US/Eastern')
+  #utc_tz = timezone('UTC')
 
   config_file = ConfigParser.RawConfigParser()
   config_file.read(ini_file)
@@ -514,6 +517,8 @@ def process_pier_files(platform_name,
   return
 
 def process_pier_old(**kwargs):
+  logger = logging.getLogger()
+  logger.debug("Processing pier file: %s" % (filename))
   with open(file_name, "rU") as data_file:
     csv_reader = csv.reader(data_file)
     checked_platform_exists = False
@@ -1069,7 +1074,7 @@ def build_tide_data_file(tide_output_file, unique_dates, log_conf_file):
   create_tide_data_file_mp('8661070',
                            tide_dates,
                            tide_output_file,
-                           1,
+                           4,
                            log_conf_file,
                            True)
 
