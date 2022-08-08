@@ -28,6 +28,9 @@ from output_plugin import output_plugin
 from wq_prediction_engine import wq_prediction_engine
 from stats import stats
 
+import multiprocessing
+multiprocessing.set_start_method('fork')
+
 #sys.path.append('/Users/danramage/Documents/workspace/rail_profile_reader/vs_bnsf_linear_data_converter')
 #import pydevd
 #pydevd.settrace('129.252.139.119', port=50723, stdoutToServer=True, stderrToServer=True)
