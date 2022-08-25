@@ -23,6 +23,9 @@ from multiprocessing import Queue
 from wq_prediction_tests import wqEquations
 from enterococcus_wq_test import EnterococcusPredictionTest,EnterococcusPredictionTestEx
 
+from model_ensemble import model_ensemble
+from cat_boost_model import cbm_model_classifier,cbm_model_regressor
+
 from mb_wq_data import mb_wq_model_data, mb_sample_sites
 from output_plugin import output_plugin
 from wq_prediction_engine import wq_prediction_engine
@@ -301,6 +304,7 @@ def output_results(**kwargs):
 class mb_prediction_engine(wq_prediction_engine):
   def __init__(self):
     self.logger = logging.getLogger(type(self).__name__)
+    self._machine_learning_models = []
 
   def build_test_objects(self, **kwargs):
     config_file = kwargs['config_file']
@@ -319,9 +323,14 @@ class mb_prediction_engine(wq_prediction_engine):
 
       model_config_file = ConfigParser.RawConfigParser()
       model_config_file.read(test_config_file)
+
       #Get the number of prediction models we use for the site.
       model_count = model_config_file.getint("settings", "model_count")
-      self.logger.debug("Site: %s Model count: %d" % (site_name, model_count))
+      self.logger.debug("Site: %s Regression Model count: %d" % (site_name, model_count))
+      ml_count = [item for ndx, item in enumerate(model_config_file.items("settings")) if item[0] == 'machine_learning_model_count']
+      if len(ml_count):
+        machine_learning_model_count = model_config_file.getint("settings", "machine_learning_model_count")
+        self.logger.debug("Site: %s ML Model count: %d" % (site_name, machine_learning_model_count))
 
       for cnt in range(model_count):
         model_name = model_config_file.get("model_%d" % (cnt+1), "name")
@@ -334,7 +343,34 @@ class mb_prediction_engine(wq_prediction_engine):
         test_obj.set_category_limits(entero_lo_limit, entero_hi_limit)
         model_list.append(test_obj)
 
-    return model_list
+
+    # for (each_key, each_val) in model_config_file.items("machine_learning_model_%d" % (cnt+1)):
+    #  each_key
+    #Models for machine learning.
+    for cnt in range(machine_learning_model_count):
+      model_object_name = model_config_file.get("machine_learning_model_%d" % (cnt+1), "model_object")
+      if model_object_name == 'cbm_model_classifier':
+        type = model_config_file.get("machine_learning_model_%d" % (cnt+1), "type")
+        model_name = model_config_file.get("machine_learning_model_%d" % (cnt+1), "name")
+        model_filename = model_config_file.get("machine_learning_model_%d" % (cnt+1), "model_file")
+        model_observations = model_config_file.get("machine_learning_model_%d" % (cnt+1), "observations").split(',')
+        false_positive_threshold = model_config_file.getfloat("machine_learning_model_%d" % (cnt+1), "false_positive_threshold")
+        false_negative_threshold = model_config_file.getfloat("machine_learning_model_%d" % (cnt+1), "false_negative_threshold")
+        model_object = cbm_model_classifier(site_name=site_name,
+                                 model_name=model_name,
+                                 model_type=type,
+                                 model_file=model_filename,
+                                 false_positive_threshold=false_positive_threshold,
+                                 false_negative_threshold=false_negative_threshold,
+                                 model_data_list=model_observations)
+        self.logger.debug("Site: %s Model name: %s model file: %s" % (site_name, model_name, model_filename))
+        model_list.append(model_object)
+
+    site_ensemble = model_ensemble(site_name, model_list)
+
+    #site_equations = wqEquations(site.name, model_list, True)
+
+    return site_ensemble
 
   def run_wq_models(self, **kwargs):
     prediction_testrun_date = datetime.now()
@@ -344,6 +380,9 @@ class mb_prediction_engine(wq_prediction_engine):
 
       enable_data_collector_plugins = config_file.getboolean('data_collector_plugins', 'enable_plugins')
       data_collector_plugin_directories = config_file.get('data_collector_plugins', 'plugin_directories').split(',')
+
+      entero_lo_limit = config_file.getint('entero_limits', 'limit_lo')
+      entero_hi_limit = config_file.getint('entero_limits', 'limit_hi')
 
       if enable_data_collector_plugins:
         self.collect_data(data_collector_plugin_directories=data_collector_plugin_directories)
@@ -391,10 +430,11 @@ class mb_prediction_engine(wq_prediction_engine):
       for site in mb_sites:
         try:
           #Get all the models used for the particular sample site.
-          model_list = self.build_test_objects(config_file=config_file, site_name=site.name)
-          if len(model_list):
+          wq_model_ensemble = self.build_test_objects(config_file=config_file, site_name=site.name)
+          #model_list = self.build_test_objects(config_file=config_file, site_name=site.name)
+          if len(wq_model_ensemble):
             #Create the container for all the models.
-            site_equations = wqEquations(site.name, model_list, True)
+            #site_equations = wqEquations(site.name, model_list, True)
 
             #Get the station specific tide stations
             tide_station = config_file.get(site.name, 'tide_station')
@@ -404,7 +444,8 @@ class mb_prediction_engine(wq_prediction_engine):
           self.logger.exception(e)
         else:
           try:
-            if len(model_list):
+            if len(wq_model_ensemble):
+            #if len(model_list):
               mb_wq_data.reset(site=site,
                                 tide_station=tide_station
                                 )
@@ -412,8 +453,10 @@ class mb_prediction_engine(wq_prediction_engine):
               site_data['station_name'] = site.name
               mb_wq_data.query_data(kwargs['begin_date'], kwargs['begin_date'], site_data, reset_site_specific_data_only)
               reset_site_specific_data_only = True
-              site_equations.runTests(site_data)
-              total_test_time = sum(testObj.test_time for testObj in site_equations.tests)
+              wq_model_ensemble.runTests(site_data)
+              #site_equations.runTests(site_data)
+              total_test_time = sum(testObj.test_time for testObj in wq_model_ensemble.tests)
+              #total_test_time = sum(testObj.test_time for testObj in site_equations.tests)
               self.logger.debug("Site: %s total time to execute models: %f ms" % (site.name, total_test_time * 1000))
               total_time += total_test_time
 
@@ -422,11 +465,12 @@ class mb_prediction_engine(wq_prediction_engine):
               #that all the tests we are running are calculating the same value, the entero
               #amount.
               entero_stats = None
-              if len(site_equations.tests):
+              if len(wq_model_ensemble):
                 entero_stats = stats()
-                for test in site_equations.tests:
-                  if test.mlrResult is not None:
-                    entero_stats.addValue(test.mlrResult)
+                for test in wq_model_ensemble.tests:
+                  if hasattr(test, 'mlrResult'):
+                    if test.mlrResult is not None:
+                      entero_stats.addValue(test.mlrResult)
                 entero_stats.doCalculations()
 
               #Check to see if there is a entero sample for our date as long as the date
@@ -437,9 +481,11 @@ class mb_prediction_engine(wq_prediction_engine):
 
 
               site_model_ensemble.append({'metadata': site,
-                                          'models': site_equations,
+                                          'models': wq_model_ensemble,
                                           'entero_value': None,
-                                          'statistics': entero_stats})
+                                          'statistics': entero_stats,
+                                          'entero_lo_limit': entero_lo_limit,
+                                          'entero_hi_limit': entero_hi_limit})
           except Exception as e:
             self.logger.exception(e)
 

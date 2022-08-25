@@ -17,7 +17,7 @@ from wqHistoricalData import wq_data
 from wqXMRGProcessing import wqDB
 from wqHistoricalData import station_geometry,sampling_sites, wq_defines, geometry_list
 from date_time_utils import get_utc_epoch
-from NOAATideData import noaaTideData
+from NOAATideData import noaaTideData, noaaTideDataExt
 from xeniaSQLAlchemy import xeniaAlchemy, multi_obs, func
 from xeniaSQLiteAlchemy import xeniaAlchemy as sl_xeniaAlchemy, multi_obs as sl_multi_obs, func as sl_func
 from sqlalchemy import or_
@@ -535,8 +535,12 @@ class mb_wq_historical_data(wq_data):
             scalar_speed_avg = scalar_speed_avg / speed_count
             wq_tests_data[wind_spd_var_name] = scalar_speed_avg * meters_per_second_to_mph
             wq_tests_data[wind_dir_var_name] = avg_dir_components['scalar'][1]
-            wq_tests_data[wind_spd_var_name_u] = avg_dir_components['vector'][0]
-            wq_tests_data[wind_dir_var_name_v] = avg_dir_components['vector'][1]
+
+            avg_spd_dir_all = calcAvgSpeedAndDirV2(wind_dir_tuples)
+            wq_tests_data[wind_spd_var_name_u] = avg_spd_dir_all['vector'][0]
+            wq_tests_data[wind_dir_var_name_v] = avg_spd_dir_all['vector'][1]
+            #wq_tests_data[wind_spd_var_name_u] = avg_dir_components['vector'][0]
+            #wq_tests_data[wind_dir_var_name_v] = avg_dir_components['vector'][1]
 
             self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
                                                                                                      scalar_speed_avg,
@@ -801,12 +805,18 @@ class mb_wq_model_data(wq_data):
         wq_tests_data[var_name] = wq_defines.NO_DATA
         var_name = '%s_salinity' % (platform_name[1].lower())
         wq_tests_data[var_name] = wq_defines.NO_DATA
-        if platform == 'carocoops.SUN2.buoy':
+        if platform == 'carocoops.SUN2.buoy' or platform == 'lbhmc.apachepier.pier':
           var_name = '%s_wind_speed' % (platform_name[1].lower())
           wq_tests_data[var_name] = wq_defines.NO_DATA
           var_name = '%s_wind_dir_val' % (platform_name[1].lower())
           wq_tests_data[var_name] = wq_defines.NO_DATA
-        else:
+
+          var_name = "%s_wind_speed_u" % platform_name[1].lower()
+          wq_tests_data[var_name] = wq_defines.NO_DATA
+          var_name = "%s_wind_dir_val_v" % platform_name[1].lower()
+          wq_tests_data[var_name] = wq_defines.NO_DATA
+
+        if platform == 'lbhmc.apachepier.pier':
           var_name = "%s_chlorophyl" % (platform_name[1].lower())
           wq_tests_data[var_name] = wq_defines.NO_DATA
           var_name = "%s_do_percent" % (platform_name[1].lower())
@@ -821,6 +831,15 @@ class mb_wq_model_data(wq_data):
       var_name = 'tide_hi_%s' % (self.tide_station)
       wq_tests_data[var_name] = wq_defines.NO_DATA
       var_name = 'tide_lo_%s' % (self.tide_station)
+      wq_tests_data[var_name] = wq_defines.NO_DATA
+      #THe machine learning models use the peek detection alg. for the tides.
+      var_name = 'tide_range_%s_pda' % (self.tide_station)
+      wq_tests_data[var_name] = wq_defines.NO_DATA
+      var_name = 'tide_hi_%s_pda' % (self.tide_station)
+      wq_tests_data[var_name] = wq_defines.NO_DATA
+      var_name = 'tide_lo_%s_pda' % (self.tide_station)
+      wq_tests_data[var_name] = wq_defines.NO_DATA
+      var_name = 'tide_stage_%s_pda' % (self.tide_station)
       wq_tests_data[var_name] = wq_defines.NO_DATA
 
 
@@ -890,6 +909,8 @@ class mb_wq_model_data(wq_data):
       salinity_var_name = "%s_salinity" % var_name
       wind_spd_var_name = "%s_wind_speed" % var_name
       wind_dir_var_name = "%s_wind_dir_val" % var_name
+      wind_spd_var_name_u = "%s_wind_speed_u" % var_name
+      wind_dir_var_name_v = "%s_wind_dir_val_v" % var_name
       water_temp_var_name = "%s_water_temp" % var_name
       chl_var_name = "%s_chlorophyl" % var_name
       do_percent_var_name = "%s_do_percent" % var_name
@@ -1028,6 +1049,10 @@ class mb_wq_model_data(wq_data):
             scalar_speed_avg = scalar_speed_avg / speed_count
             wq_tests_data[wind_spd_var_name] = scalar_speed_avg * meters_per_second_to_mph
             wq_tests_data[wind_dir_var_name] = avg_dir_components['scalar'][1]
+
+            wq_tests_data[wind_spd_var_name_u] = avg_speed_dir_components['vector'][0]
+            wq_tests_data[wind_dir_var_name_v] = avg_speed_dir_components['vector'][1]
+
             self.logger.debug("Platform: %s Avg Scalar Wind Speed: %f(m_s-1) %f(mph) Direction: %f" % (platform_handle,
                                                                                                      scalar_speed_avg,
                                                                                                      scalar_speed_avg * meters_per_second_to_mph,
@@ -1238,7 +1263,7 @@ class mb_wq_model_data(wq_data):
 
       tide = noaaTideData(use_raw=True, logger=self.logger)
       #Date/Time format for the NOAA is YYYYMMDD
-
+      tide_ext = noaaTideDataExt(use_raw=True, logger=self.logger)
       try:
         tide_data = tide.calcTideRange(beginDate = tide_start_time,
                            endDate = tide_end_time,
@@ -1247,7 +1272,13 @@ class mb_wq_model_data(wq_data):
                            units='feet',
                            timezone='GMT',
                            smoothData=False)
-
+        pda_tide_data = tide_ext.calcTideRangePeakDetect(beginDate=tide_start_time,
+                                                     endDate=tide_end_time,
+                                                     station=self.tide_station,
+                                                     datum='MLLW',
+                                                     units='feet',
+                                                     timezone='GMT',
+                                                     smoothData=False)
       except Exception as e:
         if self.logger:
           self.logger.exception(e)
@@ -1264,6 +1295,21 @@ class mb_wq_model_data(wq_data):
             wq_tests_data['tide_hi_%s' % (self.tide_station)] = tide_data['HH']['value']
             wq_tests_data['tide_lo_%s' % (self.tide_station)] = tide_data['LL']['value']
             wq_tests_data['tide_stage_%s' % (self.tide_station)] = tide_data['tide_stage']
+        #The machine learning models use the peek detection tide algorithm, so
+        #we populate this set of valaues
+        if pda_tide_data and pda_tide_data['HH'] is not None and pda_tide_data['LL'] is not None:
+          try:
+            pda_range = float(pda_tide_data['HH']['value']) - float(pda_tide_data['LL']['value'])
+          except TypeError as e:
+            if self.logger:
+              self.logger.exception(e)
+          else:
+            #Save tide station values.
+            wq_tests_data['tide_range_%s_pda' % (self.tide_station)] = pda_range
+            wq_tests_data['tide_hi_%s_pda' % (self.tide_station)] = float(pda_tide_data['HH']['value'])
+            wq_tests_data['tide_lo_%s_pda' % (self.tide_station)] = float(pda_tide_data['LL']['value'])
+            wq_tests_data['tide_stage_%s_pda' % (self.tide_station)] = int(pda_tide_data['tide_stage'])
+
         else:
           if self.logger:
             self.logger.error("Tide data for station: %s date: %s not available or only partial." % (self.tide_station, start_date))

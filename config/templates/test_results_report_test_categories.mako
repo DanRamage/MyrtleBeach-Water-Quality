@@ -36,11 +36,13 @@
               </div>
             </div>
             % for site_data in ensemble_tests:
+                <!--Site Identification Row-->
                 <div class="row">
                     <div class="col-xs-6">
                       <h2>Site: ${site_data['metadata'].name}</h2>
                     </div>
                 </div>
+                <!--Overall Prediction Row-->
                 <div class="row">
                     <div class="col-xs-6">
                       <h3>
@@ -118,66 +120,74 @@
                         </table>
                     </div>
                 % endif
-                <div class="row">
-                    <table class="table table-bordered">
-                        <tr>
-                            <th>Model Name</th>
-                            <th>Prediction Level</th>
-                            <th>Prediction Value</th>
-                            <th>Data Used</th>
-                        </tr>
-                        % for test_obj in site_data['models'].tests:
-                            % if test_obj is not None:
-                                %if str(test_obj.predictionLevel) == "LOW":
+                <!--Individual Tests-->
+                <!--Group the tests by their table -->
+                % for test_type in site_data['models'].test_categories:
+                    <div class="row">
+                        <div class="col-12">
+                            <h3>Test Category: ${test_type}</h3>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Model Name</th>
+                                <th>Prediction Level</th>
+                                <th>Prediction Value</th>
+                                <th>Data Used</th>
+                            </tr>
+                            % for test_obj in site_data['models'].testing_object_categories[test_type]:
+                                % if test_obj is not None:
+                                    %if str(test_obj.predictionLevel) == "LOW":
+                                        <tr>
+                                    %elif str(test_obj.predictionLevel) == "MEDIUM":
+                                        <tr class="medium_bacteria">
+                                    %elif str(test_obj.predictionLevel) == "HIGH":
+                                        <tr class="high_bacteria">
+                                    % elif str(test_obj.predictionLevel) == 'NO TEST':
+                                        <tr class="no_test">
+                                    %endif
+                                        <td>
+                                        ${test_obj.name}
+                                        </td>
+                                        <td>
+                                        ${test_obj.predictionLevel.__str__()}
+                                        </td>
+                                        <td>
+                                        % if test_obj.result is not None:
+                                          % if type(test_obj.result) == float:
+                                            ${"%.2f" % (test_obj.result)}
+                                          % elif type(test_obj.result) == bool:
+                                            ${"%d" % (test_obj.result)}
+                                          % else:
+                                            ${"%s" % (test_obj.result)}
+                                          % endif
+                                        % else:
+                                          NO TEST
+                                        % endif
+                                        </td>
+                                        <td>
+                                        % for key in test_obj.data_used:
+                                          % if test_obj.data_used[key] != -9999:
+                                            ${key}: ${test_obj.data_used[key]}
+                                          % else:
+                                            ${key}: Data unavailable
+                                          % endif
+                                            </br>
+                                        % endfor
+                                        </td>
+                                    </tr>
+                                %else:
                                     <tr>
-                                %elif str(test_obj.predictionLevel) == "MEDIUM":
-                                    <tr class="medium_bacteria">
-                                %elif str(test_obj.predictionLevel) == "HIGH":
-                                    <tr class="high_bacteria">
-                                % elif str(test_obj.predictionLevel) == 'NO TEST':
-                                  <tr class="no_test">
-                                %endif
-
-                                  <td>
-                                    ${test_obj.name}
-                                  </td>
-                                  <td>
-                                    ${test_obj.predictionLevel.__str__()}
-                                  </td>
-                                  <td>
-                                    % if test_obj.result is not None:
-                                      % if type(test_obj.result) == float:
-                                        ${"%.2f" % (test_obj.result)}
-                                      % elif type(test_obj.result) == bool:
-                                        ${"%d" % (test_obj.result)}
-                                      % else:
-                                        ${"%s" % (test_obj.result)}
-                                      % endif
-                                    % else:
-                                      NO TEST
-                                    % endif
-                                  </td>
-                                  <td>
-                                    % for key in test_obj.data_used:
-                                      % if test_obj.data_used[key] != -9999:
-                                        ${key}: ${test_obj.data_used[key]}
-                                      % else:
-                                        ${key}: Data unavailable
-                                      % endif
-                                        </br>
-                                    % endfor
-                                  </td>
-                                </tr>
-                            %else:
-                                <tr>
-                                    <td>
-                                        NO TEST
-                                    </td>
-                                </tr>
-                            % endif
-                        % endfor
-                    </table>
-                </div>
+                                        <td>
+                                            NO TEST
+                                        </td>
+                                    </tr>
+                                % endif
+                            % endfor
+                        </table>
+                    </div>
+                % endfor
             % endfor
         </div>
     </body>
