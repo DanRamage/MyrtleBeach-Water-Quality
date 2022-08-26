@@ -178,7 +178,7 @@ class mb_wq_historical_data(wq_data):
 
     self.get_tide_data(start_date, wq_tests_data)
     self.get_nexrad_data(start_date, wq_tests_data)
-    #self.get_nos_data(start_date, wq_tests_data)
+    self.get_nos_data(start_date, wq_tests_data)
     for platform in self.platforms:
       var_name = platform.split('.')
       self.get_platform_data(start_date, platform, wq_tests_data, var_name[1].lower())
@@ -886,7 +886,7 @@ class mb_wq_model_data(wq_data):
     #If we are resetting only the site specific data, no need to re-query these.
     if not reset_site_specific_data_only:
       self.get_tide_data(start_date, wq_tests_data)
-      #self.get_nos_data(start_date, wq_tests_data)
+      self.get_nos_data(start_date, wq_tests_data)
       for platform in self.platforms:
         var_name = platform.split('.')
         if var_name[1] == '2ndave':
