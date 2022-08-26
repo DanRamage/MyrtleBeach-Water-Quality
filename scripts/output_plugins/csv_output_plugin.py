@@ -34,13 +34,13 @@ class csv_output_plugin(output_plugin):
             entero_val = ''
           for test in test_results.tests:
             try:
-              mlr_result = ''
-              if test.mlrResult is not None:
-                mlr_result = str(test.mlrResult)
+              result = ''
+              if test.result is not None:
+                result = str(test.result)
               csv_output_file.write('%s,%s,%s,%s,%s\n' % (kwargs['prediction_date'],
                                                       site_metadata.name,
                                                       test.model_name,
-                                                      mlr_result,
+                                                      result,
                                                       entero_val))
             except Exception as e:
               if self.logger:
