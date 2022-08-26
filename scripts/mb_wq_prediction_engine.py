@@ -347,24 +347,25 @@ class mb_prediction_engine(wq_prediction_engine):
     # for (each_key, each_val) in model_config_file.items("machine_learning_model_%d" % (cnt+1)):
     #  each_key
     #Models for machine learning.
-    for cnt in range(machine_learning_model_count):
-      model_object_name = model_config_file.get("machine_learning_model_%d" % (cnt+1), "model_object")
-      if model_object_name == 'cbm_model_classifier':
-        type = model_config_file.get("machine_learning_model_%d" % (cnt+1), "type")
-        model_name = model_config_file.get("machine_learning_model_%d" % (cnt+1), "name")
-        model_filename = model_config_file.get("machine_learning_model_%d" % (cnt+1), "model_file")
-        model_observations = model_config_file.get("machine_learning_model_%d" % (cnt+1), "observations").split(',')
-        false_positive_threshold = model_config_file.getfloat("machine_learning_model_%d" % (cnt+1), "false_positive_threshold")
-        false_negative_threshold = model_config_file.getfloat("machine_learning_model_%d" % (cnt+1), "false_negative_threshold")
-        model_object = cbm_model_classifier(site_name=site_name,
-                                 model_name=model_name,
-                                 model_type=type,
-                                 model_file=model_filename,
-                                 false_positive_threshold=false_positive_threshold,
-                                 false_negative_threshold=false_negative_threshold,
-                                 model_data_list=model_observations)
-        self.logger.debug("Site: %s Model name: %s model file: %s" % (site_name, model_name, model_filename))
-        model_list.append(model_object)
+    if len(ml_count):
+      for cnt in range(machine_learning_model_count):
+        model_object_name = model_config_file.get("machine_learning_model_%d" % (cnt+1), "model_object")
+        if model_object_name == 'cbm_model_classifier':
+          type = model_config_file.get("machine_learning_model_%d" % (cnt+1), "type")
+          model_name = model_config_file.get("machine_learning_model_%d" % (cnt+1), "name")
+          model_filename = model_config_file.get("machine_learning_model_%d" % (cnt+1), "model_file")
+          model_observations = model_config_file.get("machine_learning_model_%d" % (cnt+1), "observations").split(',')
+          false_positive_threshold = model_config_file.getfloat("machine_learning_model_%d" % (cnt+1), "false_positive_threshold")
+          false_negative_threshold = model_config_file.getfloat("machine_learning_model_%d" % (cnt+1), "false_negative_threshold")
+          model_object = cbm_model_classifier(site_name=site_name,
+                                   model_name=model_name,
+                                   model_type=type,
+                                   model_file=model_filename,
+                                   false_positive_threshold=false_positive_threshold,
+                                   false_negative_threshold=false_negative_threshold,
+                                   model_data_list=model_observations)
+          self.logger.debug("Site: %s Model name: %s model file: %s" % (site_name, model_name, model_filename))
+          model_list.append(model_object)
 
     site_ensemble = model_ensemble(site_name, model_list)
 
