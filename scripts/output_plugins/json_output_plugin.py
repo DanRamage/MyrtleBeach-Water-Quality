@@ -40,7 +40,7 @@ class json_output_plugin(output_plugin):
             test_data.append({
               'name': test.model_name,
               'p_level': test.predictionLevel.__str__(),
-              'p_value': test.mlrResult,
+              'p_value': test.result,
               'data': test.data_used
             })
           features.append({
